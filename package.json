@@ -2,7 +2,7 @@
   "name": "papertrail",
   "version": "1.0.0",
   "description": "a browser-first platform that lets people aggregate, organize, and manage all life paperwork and admin (insurance letters, credit contracts, warranties, etc.) in one place. It allows scanning or photo upload of documents, highlighter-based surgical OCR for field extraction.",
-  "main": "index.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -21,6 +21,7 @@
   "homepage": "https://github.com/patrykstolinski/PaperTrail#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "mongoose": "^8.19.0",
     "multer": "^2.0.2"
