@@ -3,3 +3,4 @@ a browser-first platform that lets people aggregate, organize, and manage all li
 
 # Meldung / add ONLY README.md to push
 1. Patryk
+2. Andreas
