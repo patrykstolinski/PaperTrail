@@ -22,3 +22,4 @@ a browser-first platform that lets people aggregate, organize, and manage all li
 1. Patryk
 2. Andreas
 3. Viktor 
+4. Timo
