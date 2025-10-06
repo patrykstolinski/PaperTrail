@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Interactive OCR Tester v1.3</title>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+<style>
+html, body { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+body { display: flex; overflow: hidden; }
+#preview { width: 50%; border-right: 1px solid #ccc; overflow: auto; padding: 10px; box-sizing: border-box; height: 100vh; position: relative; }
+#output { width: 50%; padding: 10px; box-sizing: border-box; overflow-y: auto; height: 100vh; }
+canvas { max-width: 100%; max-height: 90vh; border: 1px solid #999; display: block; margin-bottom: 10px; cursor: crosshair; }
+.field { margin-bottom: 10px; }
+.field label { font-weight: bold; }
+textarea { width: 100%; box-sizing: border-box; }
+
+.ocrField {
+  display: inline-block;
+  min-width: 120px;
+  min-height: 20px;
+  border: 1px solid #999;
+  padding: 2px 4px;
+  margin-left: 6px;
+  cursor: pointer;
+  background-color: #f9f9f9;
+}
+.ocrField.active {
+  border-width: 2px;
+}
+</style>
+</head>
+<body>
+
+<div id="preview">
+  <input type="file" id="imgInput"><br><br>
+  <canvas id="canvas"></canvas>
+</div>
+
+<div id="output">
+  <div class="field"><label>Kunden-Nr:</label> <span id="kundennr" class="ocrField" data-key="kundennr">[click to mark]</span></div>
+  <div class="field"><label>Rechnungs-Nr:</label> <span id="rechnungsnr" class="ocrField" data-key="rechnungsnr">[click to mark]</span></div>
+  <div class="field"><label>Datum:</label> <span id="datum" class="ocrField" data-key="datum">[click to mark]</span></div>
+  <div class="field"><label>Gesamtbetrag:</label> <span id="gesamtbetrag" class="ocrField" data-key="gesamtbetrag">[click to mark]</span></div>
+  <div><textarea id="fullText" rows="20"></textarea></div>
+</div>
+
+<script>
+let canvas = document.getElementById('canvas');
+let ctx = canvas.getContext('2d');
+let img = new Image();
+let ocrText = "";
+let activeField = null;
+let marks = {}; // fieldKey -> {color, boxes[]}
+
+function randomColor() { return '#' + Math.floor(Math.random()*16777215).toString(16); }
+
+document.getElementById('imgInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => { img.src = evt.target.result; };
+    reader.readAsDataURL(file);
+});
+
+img.onload = () => {
+    const maxHeight = window.innerHeight*0.9;
+    const scale = Math.min(1, maxHeight / img.height);
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    runOCR(null, text => { 
+        ocrText = text; 
+        parseFields(text); 
+        document.getElementById('fullText').value = text; 
+    });
+};
+
+function runOCR(rect=null, callback=null) {
+    console.log("Running OCR...", rect);
+    if(rect){
+        const cropCanvas = document.createElement('canvas');
+        const cropCtx = cropCanvas.getContext('2d');
+        cropCanvas.width = rect.width;
+        cropCanvas.height = rect.height;
+        cropCtx.drawImage(img, rect.left, rect.top, rect.width, rect.height, 0, 0, rect.width, rect.height);
+        Tesseract.recognize(cropCanvas, 'deu').then(({ data }) => {
+            console.log("OCR Done (rect)", data);
+            if(callback) callback(data.text);
+        });
+    } else {
+        Tesseract.recognize(img, 'deu').then(({ data }) => {
+            console.log("OCR Done", data);
+            if (callback) callback(data.text);
+            else {
+                ocrText = data.text;
+                document.getElementById('fullText').value = data.text;
+                parseFields(data.text);
+            }
+        });
+    }
+}
+
+function parseFields(text) {
+    function extractField(keywords) {
+        for (let kw of keywords) {
+            const regex = new RegExp(kw + "\\s*[:\\-\\.]*\\s*([0-9A-Za-z.,/-]+)", "i");
+            const match = text.match(regex);
+            if (match) return match[1];
+        }
+        return "[click to mark]";
+    }
+
+    document.getElementById('kundennr').innerText = extractField(["Kunden-Nr","KundenNr"]);
+    document.getElementById('rechnungsnr').innerText = extractField(["Rechnungs-Nr","Rech-Nr","Invoice Nr","Rechnungs-Nr.: "]);
+    document.getElementById('datum').innerText = extractField(["Datum","Date"]);
+    document.getElementById('gesamtbetrag').innerText = extractField(["Gesamtbetrag","Nettosumme","Endbetrag"]);
+
+    console.log("Parsed fields:", {
+        kundennr: document.getElementById('kundennr').innerText,
+        rechnungsnr: document.getElementById('rechnungsnr').innerText,
+        datum: document.getElementById('datum').innerText,
+        gesamtbetrag: document.getElementById('gesamtbetrag').innerText
+    });
+}
+
+// ------------------- Mouse position helper -------------------
+function getMousePos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+    };
+}
+
+// ------------------- Field click -------------------
+document.querySelectorAll('.ocrField').forEach(span => {
+    span.addEventListener('click', e => {
+        document.querySelectorAll('.ocrField').forEach(f => {
+            f.classList.remove('active');
+            f.style.borderColor = '#999'; // reset non-active
+        });
+
+        activeField = e.target;
+        activeField.classList.add('active');
+
+        const key = activeField.dataset.key;
+        if (!marks[key]) marks[key] = { color: randomColor(), boxes: [] };
+        else marks[key].boxes = [];
+
+        // set value box border to rectangle color
+        activeField.style.borderColor = marks[key].color;
+
+        console.log("Active field:", key, "color:", marks[key].color);
+        redrawCanvas();
+    });
+});
+
+// ------------------- Canvas drawing -------------------
+let drawing=false, startX, startY;
+
+canvas.addEventListener('mousedown', e => {
+    if (!activeField) return;
+    drawing = true;
+    const pos = getMousePos(e);
+    startX = pos.x;
+    startY = pos.y;
+});
+
+canvas.addEventListener('mousemove', e => {
+    if (!drawing) return;
+    redrawCanvas();
+    const pos = getMousePos(e);
+    const x = pos.x;
+    const y = pos.y;
+
+    ctx.strokeStyle = marks[activeField.dataset.key].color;
+    ctx.fillStyle = marks[activeField.dataset.key].color + '33'; // translucent fill
+    ctx.lineWidth = 2;
+    ctx.strokeRect(startX, startY, x-startX, y-startY);
+    ctx.fillRect(startX, startY, x-startX, y-startY);
+});
+
+canvas.addEventListener('mouseup', e => {
+    if (!drawing) return;
+    drawing = false;
+    const pos = getMousePos(e);
+    const x = pos.x;
+    const y = pos.y;
+
+    const scaleX = img.width / canvas.width;
+    const scaleY = img.height / canvas.height;
+    const scaledRegion = {
+        left: Math.min(startX,x) * scaleX,
+        top: Math.min(startY,y) * scaleY,
+        width: Math.abs(x-startX) * scaleX,
+        height: Math.abs(y-startY) * scaleY
+    };
+    console.log("Marked region (image coords):", scaledRegion);
+
+    marks[activeField.dataset.key].boxes.push(scaledRegion);
+
+    runOCR(scaledRegion, text => { 
+        activeField.innerText = text.trim() || "[click to mark]"; 
+
+        console.log("Parsed fields:", {
+            kundennr: document.getElementById('kundennr').innerText,
+            rechnungsnr: document.getElementById('rechnungsnr').innerText,
+            datum: document.getElementById('datum').innerText,
+            gesamtbetrag: document.getElementById('gesamtbetrag').innerText
+        });
+    });
+
+    redrawCanvas();
+});
+
+// ------------------- Redraw canvas -------------------
+function redrawCanvas() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    for (let key in marks) {
+        ctx.strokeStyle = marks[key].color;
+        ctx.fillStyle = marks[key].color + '33'; // translucent fill
+        ctx.lineWidth = 2;
+        marks[key].boxes.forEach(b => {
+            const scaleX = canvas.width / img.width;
+            const scaleY = canvas.height / img.height;
+            ctx.strokeRect(b.left*scaleX, b.top*scaleY, b.width*scaleX, b.height*scaleY);
+            ctx.fillRect(b.left*scaleX, b.top*scaleY, b.width*scaleX, b.height*scaleY);
+        });
+    }
+}
+</script>
+
+</body>
+</html>
