@@ -15,7 +15,6 @@ const ExtractedFieldsSchema = new Schema(
         strict: false, // allow completely arbitrary fields
     }
 );
-
 const DocumentSchema = new Schema(
 {
     // ------ Required fields ------
@@ -51,7 +50,10 @@ const DocumentSchema = new Schema(
       type: Date,
       index: true,
     },
-
+    archived: {
+      type: Boolean,
+      default: false,
+    },
     // ------ Dynamic OCR/User fields ------
     extractedFields: {
       type: ExtractedFieldsSchema,
@@ -64,6 +66,30 @@ const DocumentSchema = new Schema(
       default: [],
       index: true,
     },
+    // ------ Optional reminder system with required fields (if reminder exists) ------
+    reminders: [
+        {
+          date: {
+            type: Date,
+            required: true,
+            validate: {
+              validator: function(value) {
+                return value >= new Date();
+              },
+              message: "Reminder date cannot be in the past, bruh"
+            }
+          },
+          message: {
+            type: String,
+            required: true,
+            trim: true,
+          },
+          sent: {
+            type: Boolean,
+            default: false,
+          }
+        }
+    ],
 
     // ------ Ownership & workflow ------
     userId: {
