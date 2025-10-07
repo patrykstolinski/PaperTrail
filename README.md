@@ -4,7 +4,7 @@ A browser-first platform that lets people aggregate, organize, and manage all li
 ## Inhaltsverzeichnis
 - [To start](#to-start)
 - [Testing Method](#testing-method)
-- [PaperTrail - Document Schema](#papertrail---document-Schema)
+- [PaperTrail - Document Schema](#papertrail---document-schema)
 - [Uebersicht](#Uebersicht)
 - [Feldübersicht](#felduebersicht)
 - [Indizes](#indizes)
