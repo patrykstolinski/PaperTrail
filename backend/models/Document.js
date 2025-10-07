@@ -19,6 +19,11 @@ const ExtractedFieldsSchema = new Schema(
 const DocumentSchema = new Schema(
 {
     // ------ Required fields ------
+    //enables files under 16mb - if ever over 16mb, use GridFS
+    fileBinaryData: {
+        type: Buffer,
+        required: true
+    },
     originalFileName: {
       type: String,
       required: true,
@@ -38,6 +43,7 @@ const DocumentSchema = new Schema(
     },
     title: {
       type: String,
+      required: true,
       trim: true,
       index: true,
     },
@@ -60,9 +66,10 @@ const DocumentSchema = new Schema(
     },
 
     // ------ Ownership & workflow ------
-    ownerId: {
+    userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
+      required: true,
       index: true,
     },
     status: {
@@ -87,7 +94,7 @@ DocumentSchema.index({ uploadDate: -1 });
 DocumentSchema.index({ ocrDate: -1 });
 DocumentSchema.index({ fileType: 1 });
 DocumentSchema.index({ status: 1 });
-DocumentSchema.index({ ownerId: 1 });
+DocumentSchema.index({ userId: 1 });
 
 // export the schema
 const Document = mongoose.model('Document', DocumentSchema);
