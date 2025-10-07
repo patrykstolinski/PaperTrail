@@ -47,14 +47,16 @@ app.get("/documents", async (req, res) => {
 app.post("/documents", async (req, res) => {
     try {
       // grab values from request 
-        const { originalFileName, fileType, title, tags, extractedFields } = req.body;
+        const { originalFileName, fileType, title, tags, extractedFields, userId } = req.body;
       // generate doc from request body
         const doc = new Document({
+            userId,
             originalFileName,
             fileType,
             title,
             extractedFields,
-            tags
+            tags,
+            // fileBinaryBuffer <- here comes the file later on
         });
         // save document
         await doc.save();
