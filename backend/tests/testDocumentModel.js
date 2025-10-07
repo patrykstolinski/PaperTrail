@@ -1,4 +1,4 @@
-// To run, go into main Folder and write: node backend/tests/testDocumentModel.js 
+// To run, go into main Folder of the project and write: node backend/tests/testDocumentModel.js 
 import "dotenv/config";
 import mongoose from "mongoose";
 import Document from "../models/Document.js"; 
@@ -13,7 +13,7 @@ console.log("Connected to MongoDB for testing");
 // Testing logic
 
 // NOTES TO DO:
-// normalise findOne to look for nonspecific type
+// normalise findOne to look for nonspecific type (looking for int 120 vs str 120)
 try {
   const testDoc = new Document({
     originalFileName: "invoice_2024_02.pdf",
