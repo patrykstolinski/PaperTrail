@@ -5,7 +5,7 @@ A browser-first platform that lets people aggregate, organize, and manage all li
 - [To start](#to-start)
 - [Testing Method](#testing-method)
 - [PaperTrail - Document Schema](#papertrail---document-schema)
-- [Uebersicht](#Uebersicht)
+- [Uebersicht](#uebersicht)
 - [Feldübersicht](#felduebersicht)
 - [Indizes](#indizes)
 - [Beispiel-Dokument](#beispiel-dokument)
@@ -26,7 +26,7 @@ A browser-first platform that lets people aggregate, organize, and manage all li
 
 ---
 
-# To start
+### To start
 **1. Create a .env file with:**
 - MONGO_USER=papertrailAdmin
 - MONGO_PASS=papertrailPass
@@ -35,13 +35,14 @@ A browser-first platform that lets people aggregate, organize, and manage all li
 - MONGO_HOST=host.docker.internal
 - PORT=4000
 
+```bash
 **2. npm install**  
 **3. docker compose up -d**  
 **4. npm run dev**
-
+```
 ---
 
-## Testing Method
+### Testing Method
 --------- POST ---------  
 Endpoint: http://localhost:4000/documents
 
@@ -59,59 +60,69 @@ const testDoc = new Document({
   tags: "" // optional ✅
 });
 ```
-# PaperTrail - Document Schema
+### PaperTrail - Document Schema
 
-Dieses Dokument beschreibt das Mongoose-Schema für Document in der PaperTrail-App.
+- Dieses Dokument beschreibt das Mongoose-Schema für Document in der PaperTrail-App.
 
-Übersicht
+### Uebersicht
 
-MongoDB collection: documents
+- MongoDB collection: documents
 
-Mongoose model: Document
+- Mongoose model: Document
 
-timestamps: true → automatisch createdAt und updatedAt
+- timestamps: true → automatisch createdAt und updatedAt
 
-strict: false → erlaubt Felder, die nicht explizit definiert sind
+- strict: false → erlaubt Felder, die nicht explizit definiert sind
 
-Feldübersicht
-Feldname	Typ	Pflichtfeld	Beschreibung
-originalFileName	String	⚠️ Pflicht	Originalname der hochgeladenen Datei
-fileType	String	⚠️ Pflicht	Dateityp, z. B. PDF, PNG, DOCX
-title	String	optional	Sichtbarer Titel auf dem Dashboard
-uploadDate	Date	optional	Datum des Uploads, Standard: jetzt
-ocrDate	Date	optional	Datum der OCR-Verarbeitung
-extractedFields	Object	optional	Dynamische Felder aus OCR oder manuell
-tags	[String]	optional	Schlagwörter für das Dokument
-ownerId	ObjectId	optional	Referenz auf den User, der das Dokument besitzt
-status	String	optional	Workflow-Status: "uploaded", "processing", "review", "completed", "archived"
-Indizes
+### Felduebersicht
 
-Textindizes: title, tags, originalFileName → für Volltextsuche
+| Feldname         | Typ       | Pflichtfeld | Beschreibung |
+|-----------------|-----------|-------------|-------------|
+| `originalFileName` | String    | ⚠️ Pflicht | Originalname der hochgeladenen Datei |
+| `fileType`        | String    | ⚠️ Pflicht | Dateityp, z. B. PDF, PNG, DOCX |
+| `title`           | String    | optional    | Sichtbarer Titel auf dem Dashboard |
+| `uploadDate`      | Date      | optional    | Datum des Uploads, Standard: jetzt |
+| `ocrDate`         | Date      | optional    | Datum der OCR-Verarbeitung |
+| `extractedFields` | Object    | optional    | Dynamische Felder aus OCR oder manuell, z. B. Kundennummer, Rechnungsbetrag |
+| `tags`            | [String]  | optional    | Schlagwörter für das Dokument |
+| `userId`         | ObjectId  | optional    | Referenz auf den User, der das Dokument besitzt |
+| `status`          | String    | optional    | Workflow-Status: `"uploaded"`, `"processing"`, `"review"`, `"completed"`, `"archived"`. Standard: `"uploaded"` |
 
-Sortierindizes: uploadDate (absteigend), ocrDate (absteigend), fileType, status, ownerId
+### Indizes
 
-Beispiel-Dokument
+- Textindizes: title, tags, originalFileName → für Volltextsuche
 
+- Sortierindizes: uploadDate (absteigend), ocrDate (absteigend), fileType, status, userId
+
+### Beispiel-Dokument
+
+```javascript
 const testDoc = new Document({
-  originalFileName: "rechnung_2025.pdf",
-  fileType: "PDF",
+  originalFileName: "rechnung_2025.pdf", // ⚠️ Pflichtfeld
+  fileType: "PDF",                        // ⚠️ Pflichtfeld
   title: "Rechnung August 2025",
   uploadDate: new Date(),
   ocrDate: new Date(),
-  extractedFields: { kundennummer: "12345", rechnungsbetrag: 499.99 },
+  extractedFields: {
+    kundennummer: "12345",
+    rechnungsbetrag: 499.99
+  },
   tags: ["rechnung", "kunden123"],
-  ownerId: someUserId,
+  userId: someUserId,
   status: "uploaded"
 });
 
-PaperTrail - Docker Setup
+```
 
-Dieses Docker-Setup startet MongoDB und die Mongo Express GUI für PaperTrail.
-Es verwendet docker-compose zur einfachen Orchestrierung der Services.
 
-Services
-MongoDB
+### PaperTrail - Docker Setup
 
+- Dieses Docker-Setup startet MongoDB und die Mongo Express GUI für PaperTrail.
+- Es verwendet docker-compose zur einfachen Orchestrierung der Services.
+# Services
+### MongoDB
+
+```yaml
 mongo:
   image: mongo:8
   container_name: mongo-pt
@@ -123,14 +134,14 @@ mongo:
     MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS}
   volumes:
     - mongo-pt-data:/data/db
-Beschreibung
+```
+#### Beschreibung
+- Persistentes Volume: mongo-pt-data:/data/db
 
-Persistentes Volume: mongo-pt-data:/data/db
+- Container startet automatisch: restart: always
 
-Container startet automatisch: restart: always
-
-Mongo Express (Web-GUI)
-
+### Mongo Express Web-GUI
+```javascript 
 mongo-pt-express:
   image: mongo-express:1.0.2
   container_name: mongo-pt-express
@@ -144,61 +155,128 @@ mongo-pt-express:
     ME_CONFIG_MONGODB_ENABLE_ADMIN: "true"
   depends_on:
     - mongo
-Volumes
+```
+**Beschreibung des UI der Datenbank:**
+
+- Image: mongo-express:1.0.2
+
+- Container Name: mongo-pt-express
+
+- Ports: Host 8081 → Container 8081 (Web-GUI)
+
+- Umgebungsvariablen:
+
+| Variable                          | Beschreibung                        |
+| --------------------------------- | ----------------------------------- |
+| `ME_CONFIG_MONGODB_ADMINUSERNAME` | Admin-Benutzername                  |
+| `ME_CONFIG_MONGODB_ADMINPASSWORD` | Admin-Passwort                      |
+| `ME_CONFIG_MONGODB_SERVER`        | Name des MongoDB-Services (`mongo`) |
+| `ME_CONFIG_MONGODB_ENABLE_ADMIN`  | Admin-Zugang aktivieren (`true`)    |
+
+- Depends On: MongoDB-Service → sicherstellen, dass MongoDB zuerst gestartet wird
+
+- Restart Policy: always
+
+
+### Volumes
+```javascript
 volumes:
   mongo-pt-data:
+```
+### Verwendung
 
-Verwendung
+- Environment-Datei erstellen (.env)
 
-Environment-Datei erstellen (.env)
-
-Docker Compose starten: docker-compose up -d
-
+Docker Compose starten: 
+```bash
+docker-compose up -d
+```
 Zugriff auf Mongo Express: http://localhost:8081
 
-Zusammenfassung - Verwendung
+### Zusammenfassung - Verwendung
 
-MongoDB läuft persistent
+- MongoDB läuft persistent
 
-Mongo Express Web-GUI verfügbar
+- Mongo Express Web-GUI verfügbar
 
-Setup ist wiederholbar
+- Setup ist wiederholbar
 
-Environment - Variablen
-MONGO_USER=papertrailAdmin
-MONGO_PASS=papertrailPass
-MONGO_DB=papertrail
-MONGO_PORT=27017
-MONGO_HOST=host.docker.internal
-PORT=4000
+### Environment - Variablen
+```javascript
+- MONGO_USER=papertrailAdmin
+- MONGO_PASS=papertrailPass
+- MONGO_DB=papertrail
+- MONGO_PORT=27017
+- MONGO_HOST=host.docker.internal
+- PORT=4000
+```
 
-Erklärung der Variablen
-Variable	Beschreibung
-MONGO_USER	MongoDB Root-Benutzername
-MONGO_PASS	MongoDB Root-Passwort
-MONGO_DB	Name der Datenbank
-MONGO_PORT	Port für MongoDB
-MONGO_HOST	Hostname für Verbindung
-PORT	Backend-Port
-Nutzung
+### Erklaerung der Variablen
+| Variable     | Beschreibung                                               |
+| ------------ | ---------------------------------------------------------- |
+| `MONGO_USER` | MongoDB Root-Benutzername                                  |
+| `MONGO_PASS` | MongoDB Root-Passwort                                      |
+| `MONGO_DB`   | Name der Datenbank für PaperTrail                          |
+| `MONGO_PORT` | Port, auf dem MongoDB läuft                                |
+| `MONGO_HOST` | Hostname für die Verbindung (z. B. `host.docker.internal`) |
+| `PORT`       | Port, auf dem der PaperTrail-Backend-Service läuft         |
 
-Docker Compose starten: docker compose up -d
+### Nutzung
 
-Backend starten: npm install && npm run dev
-
+Docker Compose starten: 
+```bash
+docker compose up -d
+```
+Backend starten:
+```bash
+npm install && npm run dev
+```
 Zugriff auf Mongo Express: http://localhost:8081
 
-Abhängigkeiten (Dependencies)
-Paket	Version	Beschreibung
-express	^5.1.0	Web-Framework
-mongoose	^8.19.0	ODM für MongoDB
-cors	^2.8.5	Cross-Origin Resource Sharing
-dotenv	^17.2.3	Umgebungsvariablen
-multer	^2.0.2	Middleware für Datei-Uploads
-Hinweise zur Nutzung
+### Zusammenfassung - Nutzung
 
-Alle Abhängigkeiten installieren: npm install
+- MongoDB läuft mit persistenter Speicherung und Admin-Benutzer
 
-Backend starten: npm run dev
+- Mongo Express bietet Web-GUI für Datenbank-Management
 
-Ports und DB-Zugang über .env konfigurieren
+- Environment-Variablen konfigurieren DB-Zugang und Backend-Port
+
+- Docker-Setup ist einfach startklar und wiederholbar
+
+
+### Abhaengigkeiten Dependencies
+
+Das PaperTrail-Projekt verwendet folgende Node.js-Pakete:
+
+| Paket       | Version      | Beschreibung |
+|------------|-------------|-------------|
+| `express`  | ^5.1.0      | Web-Framework für den Backend-Server, Routing und Middleware |
+| `mongoose` | ^8.19.0     | ODM für MongoDB, zum Modellieren von Dokumenten und Verwaltung der DB-Verbindungen |
+| `cors`     | ^2.8.5      | Aktiviert Cross-Origin Resource Sharing, um API-Zugriffe von anderen Domains zu erlauben |
+| `dotenv`   | ^17.2.3     | Lädt Umgebungsvariablen aus einer `.env`-Datei |
+| `multer`   | ^2.0.2      | Middleware für den Umgang mit Datei-Uploads in Express |
+
+
+- Alle Abhängigkeiten installieren: npm install
+
+- Backend starten: npm run dev
+
+- Ports und DB-Zugang über .env konfigurieren
+
+### Hinweise zur Nutzung
+
+**1.Installation aller Abhängigkeiten**
+
+```bash
+npm install
+```
+
+
+**2.Start des Backend-Servers**
+```bash
+npm run dev
+```
+
+- Der Server läuft auf dem in der .env Datei definierten PORT (z. B. 4000).
+
+- MongoDB-Verbindung erfolgt über die in .env definierten Variablen (MONGO_USER, MONGO_PASS, MONGO_DB, MONGO_HOST, MONGO_PORT).
