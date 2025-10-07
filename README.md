@@ -1,14 +1,11 @@
 # PaperTrail
-a browser-first platform that lets people aggregate, organize, and manage all life paperwork and admin (insurance letters, credit contracts, warranties, etc.) in one place. It allows scanning or photo upload of documents, highlighter-based surgical OCR for field extraction. 
-
-# PaperTrail
 A browser-first platform that lets people aggregate, organize, and manage all life paperwork and admin (insurance letters, credit contracts, warranties, etc.) in one place. It allows scanning or photo upload of documents, highlighter-based surgical OCR for field extraction.
 
 ## Inhaltsverzeichnis
 - [To start](#to-start)
 - [Testing Method](#testing-method)
-- [PaperTrail - Document Schema](#papertrail---document-schema)
-- [Übersicht](#uebersicht)
+- [PaperTrail - Document Schema](#papertrail---document-Schema)
+- [Uebersicht](#Uebersicht)
 - [Feldübersicht](#felduebersicht)
 - [Indizes](#indizes)
 - [Beispiel-Dokument](#beispiel-dokument)
@@ -50,9 +47,10 @@ Endpoint: http://localhost:4000/documents
 
 **To send a test document, go into the main folder of the project and run:**
 
-```javascript
+```bash
 node backend/tests/testDocumentModel.js
-
+```
+```javascript
 const testDoc = new Document({
   originalFileName: "Hier kommt der Originalname der Datei", // optional ✅
   fileType: "Hier kommt der Dateityp (Pflichtfeld) ⚠️",     // Pflichtfeld
@@ -60,8 +58,8 @@ const testDoc = new Document({
   extractedFields: "Hier kommen theoretische Extrafelder, z.B. Kundennummer, Rechnungsbeträge usw.", // optional ✅
   tags: "" // optional ✅
 });
-
-PaperTrail - Document Schema
+```
+# PaperTrail - Document Schema
 
 Dieses Dokument beschreibt das Mongoose-Schema für Document in der PaperTrail-App.
 
