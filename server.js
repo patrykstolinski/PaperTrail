@@ -68,7 +68,7 @@ app.post("/documents", async (req, res) => {
 // --------- Start server ---------
 const serverPort = PORT;
 app.listen(serverPort, () => {
-  console.log(`Server: Healthcheck: http://localhost/${serverPort}/health`);
+  console.log(`Server: Healthcheck: http://localhost:${serverPort}/health`);
   console.log(`Server running on port ${serverPort}, fucking finally`);
   console.log(`Database Dashboard: http://localhost:8081/`);
 }
