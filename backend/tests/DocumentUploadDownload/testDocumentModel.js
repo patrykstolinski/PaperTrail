@@ -19,7 +19,7 @@ console.log("Connected to MongoDB for testing");
 //------------ Testing logic
 const filePath = path.resolve("./backend/tests/DocumentUploadDownload/testPDF.pdf");
 const fileBuffer = fs.readFileSync(filePath);
-const fileUrl = fileBuffer;
+const fileBinaryData = fileBuffer;
 
 // define the values here
 const userId = new mongoose.Types.ObjectId();
@@ -49,7 +49,7 @@ try {
         title,
         extractedFields,
         tags,
-        fileUrl
+        fileBinaryData
     });
 
   // save the test document

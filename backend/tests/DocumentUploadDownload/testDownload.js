@@ -23,11 +23,11 @@ try {
 
   console.log("Found document:", foundDoc._id);
 
-  // Extract the Buffer from fileUrl field
-  const fileBuffer = foundDoc.fileUrl;
+  // Extract the Buffer from fileBinaryData field
+  const fileBuffer = foundDoc.fileBinaryData;
 
   if (!fileBuffer || !Buffer.isBuffer(fileBuffer)) {
-    throw new Error("No valid file buffer found in fileUrl");
+    throw new Error("No valid file buffer found in fileBinaryData");
   }
 
   // Define where to save the downloaded file
