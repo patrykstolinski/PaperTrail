@@ -17,7 +17,7 @@ const ExtractedFieldsSchema = new Schema(
 );
 
 const DocumentSchema = new Schema(
-  {
+{
     // ------ Required fields ------
     originalFileName: {
       type: String,
@@ -74,7 +74,7 @@ const DocumentSchema = new Schema(
   },
   {
     timestamps: true,
-    strict: false,
+    strict: true,
   }
 );
 

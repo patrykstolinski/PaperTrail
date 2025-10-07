@@ -1,5 +1,7 @@
 // Load environment variables from .env
 import "dotenv/config";
+// Load Schemas
+import Document from "./backend/models/Document.js";
 
 import express from "express";
 import mongoose from "mongoose";
@@ -16,57 +18,53 @@ const { MONGO_USER, MONGO_PASS, MONGO_DB, MONGO_PORT, MONGO_HOST, PORT } = proce
 // Connect to MongoDB
 const mongoURI = `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=admin`;
 
-mongoose
-  .connect(mongoURI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
-
-// ------------------ Schema & Model 
-
-const documentSchema = new mongoose.Schema({
-  filename: String,
-  originalName: String,
-  tags: [String],
-  createdAt: { type: Date, default: Date.now },
-});
-
-const Document = mongoose.model("Document", documentSchema);
-
+try {
+    await mongoose.connect(mongoURI);
+    console.log("Connected to MongoDB");
+} catch (err) {
+    console.error("MongoDB connection error:", err);
+    process.exit(1);
+}
 // ------------------ Routes 
 
+// --------- GET Endpoints ---------
 // --------- Health check ---------
-// --------- GET ---------
 app.get("/health", (req, res) => {
-  res.send("PaperTrail API running");
+    res.send("PaperTrail API running");
 });
 // --------- List all documents ---------
 app.get("/documents", async (req, res) => {
-  try {
-    const docs = await Document.find().sort({ createdAt: -1 });
-    res.json(docs);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to fetch documents" });
-  }
+    try {
+        const docs = await Document.find().sort({ uploadDate: -1 });
+        res.json(docs);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch documents" });
+    }
 });
 
 // --------- POST ---------
 // Create a dummy document
 app.post("/documents", async (req, res) => {
-  try {
-    const doc = new Document({
-      filename: "demo.pdf",
-      originalName: "demo.pdf",
-      tags: ["test"],
-    });
-    await doc.save();
-    res.json(doc);
-  } catch (err) {
-    res.status(500).json({ error: "Failed to save document" });
-  }
+    try {
+      // grab values from request 
+        const { originalFileName, fileType, title, tags } = req.body;
+      // generate doc from request body
+        const doc = new Document({ 
+            originalFileName, 
+            fileType, 
+            title, 
+            tags 
+        });
+        // save document
+        await doc.save();
+        res.json(doc);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to save document"});
+    }
 });
 
 // --------- Start server ---------
-const serverPort = PORT;
+const serverPort = PORT || 4000;
 app.listen(serverPort, () => {
   console.log(`Server: Healthcheck: http://localhost:${serverPort}/health`);
   console.log(`Server running on port ${serverPort}, fucking finally`);
