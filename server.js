@@ -47,13 +47,14 @@ app.get("/documents", async (req, res) => {
 app.post("/documents", async (req, res) => {
     try {
       // grab values from request 
-        const { originalFileName, fileType, title, tags } = req.body;
+        const { originalFileName, fileType, title, tags, extractedFields } = req.body;
       // generate doc from request body
-        const doc = new Document({ 
-            originalFileName, 
-            fileType, 
-            title, 
-            tags 
+        const doc = new Document({
+            originalFileName,
+            fileType,
+            title,
+            extractedFields,
+            tags
         });
         // save document
         await doc.save();

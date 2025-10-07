@@ -1,0 +1,274 @@
+{
+	"info": {
+		"_postman_id": "4c500642-d351-4e03-9a2e-94b7751c3684",
+		"name": "PaperTrail",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "46741484",
+		"_collection_link": "https://patrykstolinski-1880433.postman.co/workspace/Patryk-Stolinski's-Workspace~05e4df39-2774-42cf-869a-5b413ed373e6/collection/46741484-4c500642-d351-4e03-9a2e-94b7751c3684?action=share&source=collection_link&creator=46741484"
+	},
+	"item": [
+		{
+			"name": "Health check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/health",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ALL documents",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/documents",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"documents"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "http://localhost:4000/documents",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:4000/documents",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"documents"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "721"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"2d1-aNaGsVq+nBi+uqBOE4oZHY4ZCBQ\""
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 07 Oct 2025 10:21:16 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "[\n    {\n        \"_id\": \"68e4e8cad39103a566020136\",\n        \"originalFileName\": \"invoice_2024_03.pdf\",\n        \"fileType\": \"jpg\",\n        \"title\": \"Rechnung Februar 2025 03\",\n        \"extractedFields\": {\n            \"Kundennummer\": \"115.15\",\n            \"Gesamtsumme\": \"115.15\"\n        },\n        \"tags\": [\n            \"TestTag1\",\n            \"TestTag2\"\n        ],\n        \"status\": \"uploaded\",\n        \"uploadDate\": \"2025-10-07T10:17:46.923Z\",\n        \"createdAt\": \"2025-10-07T10:17:46.927Z\",\n        \"updatedAt\": \"2025-10-07T10:17:46.927Z\",\n        \"__v\": 0\n    },\n    {\n        \"_id\": \"68e4e8a8c5d9d671f0513c48\",\n        \"originalFileName\": \"invoice_2024_02.pdf\",\n        \"fileType\": \"jpg\",\n        \"title\": \"Rechnung Februar 2025 02\",\n        \"extractedFields\": {\n            \"Kundennummer\": \"123\",\n            \"Gesamtsumme\": \"115.25\"\n        },\n        \"tags\": [],\n        \"status\": \"uploaded\",\n        \"uploadDate\": \"2025-10-07T10:17:12.605Z\",\n        \"createdAt\": \"2025-10-07T10:17:12.608Z\",\n        \"updatedAt\": \"2025-10-07T10:17:12.608Z\",\n        \"__v\": 0\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "create a test document",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"originalFileName\": \"invoice_2025_03.pdf\",\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung März 2025\",\r\n  \"tags\": [\"invoice\", \"march\", \"finance\"],\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"12345\",\r\n    \"Gesamtsumme\": \"299.99\",\r\n    \"Rechnungsdatum\": \"2025-03-07\"\r\n  }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:4000/documents",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"documents"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "OK",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"originalFileName\": \"invoice_2025_03.pdf\",\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung März 2025\",\r\n  \"tags\": [\"invoice\", \"march\", \"finance\"],\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"12345\",\r\n    \"Gesamtsumme\": \"299.99\",\r\n    \"Rechnungsdatum\": \"2025-03-07\"\r\n  }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/documents",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"documents"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "401"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"191-OvlQIf6VjRlmKYL0S6Rh0UxXW5A\""
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 07 Oct 2025 10:23:42 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"originalFileName\": \"invoice_2025_03.pdf\",\n    \"fileType\": \"pdf\",\n    \"title\": \"Rechnung März 2025\",\n    \"extractedFields\": {\n        \"Kundennummer\": \"12345\",\n        \"Gesamtsumme\": \"299.99\",\n        \"Rechnungsdatum\": \"2025-03-07\"\n    },\n    \"tags\": [\n        \"invoice\",\n        \"march\",\n        \"finance\"\n    ],\n    \"status\": \"uploaded\",\n    \"_id\": \"68e4ea2e75002b4682dc22f2\",\n    \"uploadDate\": \"2025-10-07T10:23:42.005Z\",\n    \"createdAt\": \"2025-10-07T10:23:42.009Z\",\n    \"updatedAt\": \"2025-10-07T10:23:42.009Z\",\n    \"__v\": 0\n}"
+				},
+				{
+					"name": "NOT ok",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung März 2025\",\r\n  \"tags\": [\"invoice\", \"march\", \"finance\"],\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"12345\",\r\n    \"Gesamtsumme\": \"299.99\",\r\n    \"Rechnungsdatum\": \"2025-03-07\"\r\n  }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:4000/documents",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "4000",
+							"path": [
+								"documents"
+							]
+						}
+					},
+					"status": "Internal Server Error",
+					"code": 500,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "35"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"23-061tHfSRTAkOhaiwI/6CILKp9G4\""
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 07 Oct 2025 10:24:15 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"error\": \"Failed to save document\"\n}"
+				}
+			]
+		}
+	]
+}
