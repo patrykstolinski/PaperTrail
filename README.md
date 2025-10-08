@@ -49,17 +49,38 @@ Endpoint: http://localhost:4000/documents
 **To send a test document, go into the main folder of the project and run:**
 
 ```bash
-node backend/tests/testDocumentModel.js
+node backend/tests/DocumentUploadDownload/testDocumentModel.js
 ```
+### Test Dokument Schema
+
 ```javascript
 const testDoc = new Document({
+  userId: "Hier kommt die user ID", //Pflichtfeld
   originalFileName: "Hier kommt der Originalname der Datei", // optional ✅
   fileType: "Hier kommt der Dateityp (Pflichtfeld) ⚠️",     // Pflichtfeld
   title: "Hier kommt der sichtbare Titel auf dem Dashboard (Pflichtfeld) ⚠️", // Pflichtfeld
   extractedFields: "Hier kommen theoretische Extrafelder, z.B. Kundennummer, Rechnungsbeträge usw.", // optional ✅
   tags: "" // optional ✅
+  fileBinaryData: "Binäre Präsentation der Dateien" //Pflichtfeld 
 });
 ```
+### Upload Test
+
+- Prüft, ob ein neues Dokument erfolgreich in die MongoDB gespeichert werden kann – inklusive aller zugehörigen Daten wie Titel, Dateityp, extrahierte Felder, Tags und der Binärdatei (fileBinaryData).
+Nach dem Speichern wird überprüft, ob das Dokument anhand eines bestimmten Wertes (z. B. „Gesamtsumme“) in den extrahierten Feldern wiedergefunden werden kann.
+
+
+
+### Download Test
+
+- Prüft, ob ein zuvor gespeichertes Dokument anhand seines Titels in der Datenbank gefunden werden kann.
+Wenn das Dokument existiert, wird die darin gespeicherte Binärdatei (fileBinaryData) ausgelesen und als echte Datei auf das lokale Dateisystem zurückgeschrieben — um sicherzustellen, dass der Upload korrekt und die Daten vollständig abrufbar sind.
+
+
+```bash
+node backend/tests/DocumentUploadDownload/testDownload.js
+```
+
 ### PaperTrail - Document Schema
 
 - Dieses Dokument beschreibt das Mongoose-Schema für Document in der PaperTrail-App.
@@ -76,23 +97,27 @@ const testDoc = new Document({
 
 ### Felduebersicht
 
-| Feldname         | Typ       | Pflichtfeld | Beschreibung |
-|-----------------|-----------|-------------|-------------|
-| `originalFileName` | String    | ⚠️ Pflicht | Originalname der hochgeladenen Datei |
-| `fileType`        | String    | ⚠️ Pflicht | Dateityp, z. B. PDF, PNG, DOCX |
-| `title`           | String    | optional    | Sichtbarer Titel auf dem Dashboard |
-| `uploadDate`      | Date      | optional    | Datum des Uploads, Standard: jetzt |
-| `ocrDate`         | Date      | optional    | Datum der OCR-Verarbeitung |
-| `extractedFields` | Object    | optional    | Dynamische Felder aus OCR oder manuell, z. B. Kundennummer, Rechnungsbetrag |
-| `tags`            | [String]  | optional    | Schlagwörter für das Dokument |
-| `userId`         | ObjectId  | optional    | Referenz auf den User, der das Dokument besitzt |
-| `status`          | String    | optional    | Workflow-Status: `"uploaded"`, `"processing"`, `"review"`, `"completed"`, `"archived"`. Standard: `"uploaded"` |
+| Feldname           | Typ      | Pflichtfeld | Beschreibung                                                                                                         |
+| ------------------ | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------- |
+| `originalFileName` | String   | ⚠️ Pflicht  | Originalname der hochgeladenen Datei                                                                                 |
+| `fileType`         | String   | ⚠️ Pflicht  | Dateityp, z. B. PDF, PNG, DOCX                                                                                       |
+| `title`            | String   | optional    | Sichtbarer Titel auf dem Dashboard                                                                                   |
+| `uploadDate`       | Date     | optional    | Datum des Uploads, Standard: jetzt                                                                                   |
+| `ocrDate`          | Date     | optional    | Datum der OCR-Verarbeitung                                                                                           |
+| `extractedFields`  | Object   | optional    | Dynamische Felder aus OCR oder manuell, z. B. Kundennummer, Rechnungsbetrag                                          |
+| `tags`             | [Array]  | optional    | Schlagwörter für das Dokument                                                                                        |
+| `userId`           | ObjectId | optional    | Referenz auf den User, der das Dokument besitzt                                                                      |
+| `status`           | String   | optional    | Workflow-Status: `"uploaded"`, `"processing"`, `"review"`, `"completed"`, `"archived"`. Standard: `"uploaded"`       |
+| `fileBinaryData`   | Buffer   | optional    | Enthält die Binärdaten der hochgeladenen Datei                                                                       |
+| `archived`         | Boolean  | optional    | Gibt an, ob das Dokument archiviert ist. Standard: `false`                                                           |
+| `reminders`        | [Array]  | optional    | Liste von Erinnerungen mit Datum, Nachricht und Sendestatus. Nur zukünftige Daten erlaubt (automatische Validierung) |
+
 
 ### Indizes
 
 - Textindizes: title, tags, originalFileName → für Volltextsuche
 
-- Sortierindizes: uploadDate (absteigend), ocrDate (absteigend), fileType, status, userId
+- Sortierindizes: uploadDate (absteigend), ocrDate (absteigend), fileType, status, userId, fileBinaryData
 
 ### Beispiel-Dokument
 
@@ -280,3 +305,4 @@ npm run dev
 - Der Server läuft auf dem in der .env Datei definierten PORT (z. B. 4000).
 
 - MongoDB-Verbindung erfolgt über die in .env definierten Variablen (MONGO_USER, MONGO_PASS, MONGO_DB, MONGO_HOST, MONGO_PORT).
+
