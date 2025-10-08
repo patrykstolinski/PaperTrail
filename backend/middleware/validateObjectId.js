@@ -7,4 +7,3 @@ export const validateObjectId = (req, res, next) => {
     }
     next();
 };
-
