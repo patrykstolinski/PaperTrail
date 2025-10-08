@@ -1,7 +1,7 @@
 import express from "express";
 
 // import functions to do stuff to the document
-import { createDocument, getAllDocuments, getDocumentById, updateDocument, DeleteDocument, deleteDocument } from "../controllers/documentController.js";
+import { createDocument, getAllDocuments, getDocumentById, updateDocument, deleteDocument } from "../controllers/documentController.js";
 
 // import midlleware
 import { validateObjectId } from "../middleware/validateObjectId.js";

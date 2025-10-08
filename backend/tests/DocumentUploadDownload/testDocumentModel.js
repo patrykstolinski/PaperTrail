@@ -49,7 +49,8 @@ try {
         title,
         extractedFields,
         tags,
-        fileBinaryData
+        fileBinaryData: Buffer.from([0])  // 1 byte dummy data
+        // fileBinaryData <- actual code
     });
 
   // save the test document

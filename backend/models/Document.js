@@ -126,4 +126,4 @@ DocumentSchema.index({ userId: 1 });
 
 // export the schema
 const Document = mongoose.model('Document', DocumentSchema);
-export default Document;
+export default mongoose.models.Document || mongoose.model("Document", DocumentSchema);
