@@ -33,6 +33,7 @@ const DocumentSchema = new Schema(
       type: Date,
       default: Date.now,
       index: true,
+      immutable: true,
     },
     fileType: {
       type: String,
@@ -97,6 +98,7 @@ const DocumentSchema = new Schema(
       ref: "User",
       required: true,
       index: true,
+      immutable: true,
     },
     status: {
       type: String,
