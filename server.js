@@ -12,9 +12,26 @@ import documentRoutes from "./backend/routes/documents.js";
 //------------------ initialise Express App
 const app = express();
 
-//------------------ Middleware
+//------------------ Import Middleware
+// Logging middleware
+import morgan from "morgan";
+// global error handler
+import errorHandler from "./backend/middleware/errorHandler.js";
+// Not Found Middleware
+import notFound from "./backend/middleware/notFound.js";
+
+// Enable CORS for frontend (optionally configure origin)
 app.use(cors());
+
+// Parse JSON bodies
 app.use(express.json({limit: "50mb"}));
+
+// Parse URL-encoded bodies
+app.use(express.urlencoded({ extended: true }));
+
+
+//use logger middleware
+app.use(morgan("dev"));
 
 //------------------ Get MongoDB connection info from .env
 const { MONGO_USER, MONGO_PASS, MONGO_DB, MONGO_PORT, MONGO_HOST, PORT } = process.env;
@@ -25,8 +42,6 @@ const mongoURI = `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PO
 try {
     await mongoose.connect(mongoURI);
     console.log("Connected to MongoDB. Nice.");
-    // ensure indexing
-    await Document.init();
 } catch (err) {
     console.error("Bruh, MongoDB connection error:", err);
     process.exit(1);
@@ -38,7 +53,14 @@ app.get("/health", (req, res) => {
 });
 
 //------------------ Main routes
+
 app.use("/api/documents", documentRoutes);
+
+// Catch-all for unmatched routes (404)
+app.use(notFound);
+
+// Global error handler (must be after all routes)
+app.use(errorHandler);
 
 // --------- Start server ---------
 const serverPort = PORT || 4000;
