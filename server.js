@@ -25,6 +25,8 @@ const mongoURI = `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PO
 try {
     await mongoose.connect(mongoURI);
     console.log("Connected to MongoDB. Nice.");
+    // ensure indexing
+    await Document.init();
 } catch (err) {
     console.error("Bruh, MongoDB connection error:", err);
     process.exit(1);

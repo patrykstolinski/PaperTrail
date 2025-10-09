@@ -26,6 +26,16 @@ export const createDocument = async (req,res) => {
         // return OK and saved file 
         res.status(201).json({ success: true, data:doc});
     } catch (err) {
+        // catch duplicates
+        if (err.code === 11000) {
+            const field = Object.keys(err.keyPattern)[0];
+            return res.status(400).json({
+                success:false,
+                error: field === "title"
+                ? "A document with this title already exists for this user."
+                : "You already uploaded this file."
+            });
+        }
         console.error("Error creating the document", err);
         res.status(500).json({ success: false, error: err.message});
     }
