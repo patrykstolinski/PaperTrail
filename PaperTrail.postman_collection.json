@@ -13,12 +13,10 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:4000/health",
-					"protocol": "http",
+					"raw": "{{base_url}}/health",
 					"host": [
-						"localhost"
+						"{{base_url}}"
 					],
-					"port": "4000",
 					"path": [
 						"health"
 					]
@@ -28,20 +26,60 @@
 		},
 		{
 			"name": "ALL documents",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// check status code is 200\r",
+							"pm.test(\"GET all -> status 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"// check success field exists and is true\r",
+							"pm.test(\"GET all -> success true\", () => {\r",
+							"    const json = pm.response.json();\r",
+							"    pm.expect(json.success).to.eql(true);\r",
+							"});\r",
+							"\r",
+							"// check data is an array\r",
+							"pm.test(\"GET all -> data is array\", () => {\r",
+							"    const json = pm.response.json();\r",
+							"    pm.expect(json.data).to.be.an(\"array\");\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
 			"request": {
 				"auth": {
 					"type": "noauth"
 				},
 				"method": "GET",
 				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
 				"url": {
-					"raw": "http://localhost:4000/documents",
-					"protocol": "http",
+					"raw": "{{base_url}}/api/documents",
 					"host": [
-						"localhost"
+						"{{base_url}}"
 					],
-					"port": "4000",
 					"path": [
+						"api",
 						"documents"
 					]
 				}
@@ -53,20 +91,21 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:4000/documents",
+							"raw": "http://localhost:4000/api/documents",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"port": "4000",
 							"path": [
+								"api",
 								"documents"
 							]
 						}
 					},
 					"status": "OK",
 					"code": 200,
-					"_postman_previewlanguage": "",
+					"_postman_previewlanguage": null,
 					"header": [
 						{
 							"key": "X-Powered-By",
@@ -107,16 +146,42 @@
 			]
 		},
 		{
-			"name": "create a test document",
+			"name": "Document by ID",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
 			"request": {
 				"auth": {
 					"type": "noauth"
 				},
-				"method": "POST",
+				"method": "GET",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"originalFileName\": \"invoice_2025_03.pdf\",\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung März 2025\",\r\n  \"tags\": [\"invoice\", \"march\", \"finance\"],\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"12345\",\r\n    \"Gesamtsumme\": \"299.99\",\r\n    \"Rechnungsdatum\": \"2025-03-07\"\r\n  }\r\n}",
+					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}"
+				},
+				"url": {
+					"raw": "{{base_url}}/api/documents/{{documentId}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"documents",
+						"{{documentId}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update a document",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"title\": \"Updateddd Test Invoice 2025-10\",\r\n  \"tags\": [\"invoice\",\"updated\"]\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -124,26 +189,26 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:4000/documents",
-					"protocol": "http",
+					"raw": "{{base_url}}/api/documents/{{documentId}}",
 					"host": [
-						"localhost"
+						"{{base_url}}"
 					],
-					"port": "4000",
 					"path": [
-						"documents"
+						"api",
+						"documents",
+						"{{documentId}}"
 					]
 				}
 			},
 			"response": [
 				{
-					"name": "OK",
+					"name": "Document updated",
 					"originalRequest": {
-						"method": "POST",
+						"method": "PUT",
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"originalFileName\": \"invoice_2025_03.pdf\",\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung März 2025\",\r\n  \"tags\": [\"invoice\", \"march\", \"finance\"],\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"12345\",\r\n    \"Gesamtsumme\": \"299.99\",\r\n    \"Rechnungsdatum\": \"2025-03-07\"\r\n  }\r\n}",
+							"raw": "{\r\n  \"title\": \"Updatedddd Test Invoice 2025-10\",\r\n  \"tags\": [\"invoice\",\"updated\"]\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -151,14 +216,14 @@
 							}
 						},
 						"url": {
-							"raw": "http://localhost:4000/documents",
-							"protocol": "http",
+							"raw": "{{base_url}}/api/documents/{{documentId}}",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "4000",
 							"path": [
-								"documents"
+								"api",
+								"documents",
+								"{{documentId}}"
 							]
 						}
 					},
@@ -180,15 +245,15 @@
 						},
 						{
 							"key": "Content-Length",
-							"value": "401"
+							"value": "518"
 						},
 						{
 							"key": "ETag",
-							"value": "W/\"191-OvlQIf6VjRlmKYL0S6Rh0UxXW5A\""
+							"value": "W/\"206-QZ78e9T+23S+yYvusFYVw60YH9M\""
 						},
 						{
 							"key": "Date",
-							"value": "Tue, 07 Oct 2025 10:23:42 GMT"
+							"value": "Thu, 09 Oct 2025 12:01:37 GMT"
 						},
 						{
 							"key": "Connection",
@@ -200,36 +265,65 @@
 						}
 					],
 					"cookie": [],
-					"body": "{\n    \"originalFileName\": \"invoice_2025_03.pdf\",\n    \"fileType\": \"pdf\",\n    \"title\": \"Rechnung März 2025\",\n    \"extractedFields\": {\n        \"Kundennummer\": \"12345\",\n        \"Gesamtsumme\": \"299.99\",\n        \"Rechnungsdatum\": \"2025-03-07\"\n    },\n    \"tags\": [\n        \"invoice\",\n        \"march\",\n        \"finance\"\n    ],\n    \"status\": \"uploaded\",\n    \"_id\": \"68e4ea2e75002b4682dc22f2\",\n    \"uploadDate\": \"2025-10-07T10:23:42.005Z\",\n    \"createdAt\": \"2025-10-07T10:23:42.009Z\",\n    \"updatedAt\": \"2025-10-07T10:23:42.009Z\",\n    \"__v\": 0\n}"
-				},
+					"body": "{\n    \"success\": true,\n    \"data\": {\n        \"_id\": \"68e79bba8ec354357e429164\",\n        \"fileBinaryData\": {\n            \"type\": \"Buffer\",\n            \"data\": [\n                80,\n                68,\n                70\n            ]\n        },\n        \"originalFileName\": \"invoice_oct_2025.pdf\",\n        \"fileType\": \"pdf\",\n        \"title\": \"Updatedddd Test Invoice 2025-10\",\n        \"archived\": false,\n        \"extractedFields\": {\n            \"Kundennummer\": \"123\",\n            \"Gesamtsumme\": \"99.99\"\n        },\n        \"tags\": [\n            \"invoice\",\n            \"updated\"\n        ],\n        \"userId\": \"650f1c5d1234567890abcdef\",\n        \"status\": \"uploaded\",\n        \"uploadDate\": \"2025-10-09T11:25:46.204Z\",\n        \"reminders\": [],\n        \"createdAt\": \"2025-10-09T11:25:46.205Z\",\n        \"updatedAt\": \"2025-10-09T12:01:37.237Z\",\n        \"__v\": 0\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "Delete document",
+			"event": [
 				{
-					"name": "NOT ok",
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"DELETE -> 200\", () => pm.response.to.have.status(200));\r",
+							"pm.test(\"DELETE -> success true\", () => {\r",
+							"  const json = pm.response.json();\r",
+							"  pm.expect(json.success).to.eql(true);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/documents/{{documentIdDelete}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"documents",
+						"{{documentIdDelete}}"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Document deleted",
 					"originalRequest": {
-						"method": "POST",
+						"method": "DELETE",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung März 2025\",\r\n  \"tags\": [\"invoice\", \"march\", \"finance\"],\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"12345\",\r\n    \"Gesamtsumme\": \"299.99\",\r\n    \"Rechnungsdatum\": \"2025-03-07\"\r\n  }\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "http://localhost:4000/documents",
-							"protocol": "http",
+							"raw": "{{base_url}}/api/documents/{{documentIdDelete}}",
 							"host": [
-								"localhost"
+								"{{base_url}}"
 							],
-							"port": "4000",
 							"path": [
-								"documents"
+								"api",
+								"documents",
+								"{{documentIdDelete}}"
 							]
 						}
 					},
-					"status": "Internal Server Error",
-					"code": 500,
+					"status": "OK",
+					"code": 200,
 					"_postman_previewlanguage": null,
 					"header": [
 						{
@@ -246,15 +340,15 @@
 						},
 						{
 							"key": "Content-Length",
-							"value": "35"
+							"value": "81"
 						},
 						{
 							"key": "ETag",
-							"value": "W/\"23-061tHfSRTAkOhaiwI/6CILKp9G4\""
+							"value": "W/\"51-c9HvwHxNjAWDKQi25oE3lFCa98Q\""
 						},
 						{
 							"key": "Date",
-							"value": "Tue, 07 Oct 2025 10:24:15 GMT"
+							"value": "Thu, 09 Oct 2025 12:05:22 GMT"
 						},
 						{
 							"key": "Connection",
@@ -266,9 +360,494 @@
 						}
 					],
 					"cookie": [],
-					"body": "{\n    \"error\": \"Failed to save document\"\n}"
+					"body": "{\n    \"success\": true,\n    \"data\": \"Document 68e7a4917d4922296ff6ae73 deleted successfully.\"\n}"
 				}
 			]
+		},
+		{
+			"name": "create a test document",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Tests for 'create a test document' (POST /api/documents)",
+							"pm.test(\"Status code is 201 (Created)\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response has Content-Type: application/json\", function () {",
+							"    pm.response.to.have.header(\"Content-Type\");",
+							"    pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\");",
+							"});",
+							"",
+							"pm.test(\"Response body has expected structure\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an(\"object\");",
+							"    pm.expect(jsonData).to.have.property(\"id\");",
+							"    pm.expect(jsonData).to.have.property(\"title\");",
+							"    pm.expect(jsonData).to.have.property(\"createdAt\");",
+							"    pm.expect(jsonData).to.have.property(\"updatedAt\");",
+							"});",
+							"",
+							"pm.test(\"Document ID is a non-empty string\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.id).to.be.a(\"string\").and.not.empty;",
+							"});",
+							"",
+							"pm.test(\"Title is a non-empty string\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.title).to.be.a(\"string\").and.not.empty;",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2030-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_march_2030.pdf\",\r\n  \"fileBinaryData\": \"UERGGSSSSSSS\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/documents",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"documents"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "OK",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"userId\": \"66f2e23ad4357a408cd4f111\",\r\n  \"originalFileName\": \"invoice_test_2025_01.pdf\",\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung Test 2025 01\",\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"555\",\r\n    \"Gesamtsumme\": \"125.99\"\r\n  },\r\n  \"tags\": [\"invoice\", \"test\"],\r\n  \"fileBinaryData\": \"UERG\" \r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"documents"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "510"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"1fe-pfuXZUdekEHCKPCM+WtsJCa9Mcs\""
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 09 Oct 2025 09:02:22 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"data\": {\n        \"fileBinaryData\": {\n            \"type\": \"Buffer\",\n            \"data\": [\n                80,\n                68,\n                70\n            ]\n        },\n        \"originalFileName\": \"invoice_test_2025_01.pdf\",\n        \"fileType\": \"pdf\",\n        \"title\": \"Rechnung Test 2025 01\",\n        \"archived\": false,\n        \"extractedFields\": {\n            \"Kundennummer\": \"555\",\n            \"Gesamtsumme\": \"125.99\"\n        },\n        \"tags\": [\n            \"invoice\",\n            \"test\"\n        ],\n        \"userId\": \"66f2e23ad4357a408cd4f111\",\n        \"status\": \"uploaded\",\n        \"_id\": \"68e77a1e4717097ef6fdb250\",\n        \"uploadDate\": \"2025-10-09T09:02:22.632Z\",\n        \"reminders\": [],\n        \"createdAt\": \"2025-10-09T09:02:22.634Z\",\n        \"updatedAt\": \"2025-10-09T09:02:22.634Z\",\n        \"__v\": 0\n    }\n}"
+				},
+				{
+					"name": "NOT OK - Missing field",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"userId\": \"66f2e23ad4357a408cd4f111\",\r\n  \"originalFileName\": \"invoice_test_2025_01.pdf\",\r\n  \"fileType\": \"pdf\",\r\n  \"title\": \"Rechnung Test 2025 01\",\r\n  \"extractedFields\": {\r\n    \"Kundennummer\": \"555\",\r\n    \"Gesamtsumme\": \"125.99\"\r\n  },\r\n  \"tags\": [\"invoice\", \"test\"]\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"documents"
+							]
+						}
+					},
+					"status": "Bad Request",
+					"code": 400,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "69"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"45-DUCLRzSuidYvZ1qnm6VAcNsNtrY\""
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 09 Oct 2025 09:03:27 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"error\": \"Missing required field(s): fileBinaryData\"\n}"
+				}
+			]
+		},
+		{
+			"name": "create a test document (duplicate file)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200 or 201\", () => {\r",
+							"  pm.response.to.have.status.oneOf([200, 201]);\r",
+							"});\r",
+							"pm.test(\"Document created successfully\", () => {\r",
+							"  const res = pm.response.json();\r",
+							"  pm.expect(res.success).to.be.true;\r",
+							"  pm.expect(res.data._id).to.exist;\r",
+							"  pm.collectionVariables.set(\"docId\", res.data._id);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGGGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/documents",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"documents"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Duplicated file",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2025-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"documents"
+							]
+						}
+					},
+					"status": "Conflict",
+					"code": 409,
+					"_postman_previewlanguage": null,
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "80"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"50-fTQ04j/oS0kbUxq5ZLr7bJB4kfA\""
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 09 Oct 2025 11:44:00 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"error\": \"Duplicate file: You have already uploaded this file.\"\n}"
+				}
+			]
+		},
+		{
+			"name": "create a test document (duplicate title)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200 or 201\", () => {\r",
+							"  pm.response.to.have.status.oneOf([200, 201]);\r",
+							"});\r",
+							"pm.test(\"Document created successfully\", () => {\r",
+							"  const res = pm.response.json();\r",
+							"  pm.expect(res.success).to.be.true;\r",
+							"  pm.expect(res.data._id).to.exist;\r",
+							"  pm.collectionVariables.set(\"docId\", res.data._id);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/documents",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"documents"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "create a test document (duplicate title)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/documents",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"documents"
+							]
+						}
+					},
+					"status": "Conflict",
+					"code": 409,
+					"_postman_previewlanguage": "",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "98"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"62-uBCq+N9MJYRyWfcaVW5X/9GKsFo\""
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 09 Oct 2025 11:45:58 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": false,\n    \"error\": \"Duplicate title: You have already uploaded a document with this title.\"\n}"
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": ""
+		},
+		{
+			"key": "documentId",
+			"value": ""
+		},
+		{
+			"key": "documentIdDelete",
+			"value": ""
+		},
+		{
+			"key": "testUserId",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "docId",
+			"value": ""
 		}
 	]
 }
