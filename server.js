@@ -19,8 +19,10 @@ import morgan from "morgan";
 import errorHandler from "./backend/middleware/errorHandler.js";
 // Not Found Middleware
 import notFound from "./backend/middleware/notFound.js";
-// upload midldeware 
+// upload middleware 
 import upload from "./backend/middleware/upload.js";
+// upload error handling middleware
+import handleUploadErrors from "./backend/middleware/handleUploadErrors.js";
 
 // Enable CORS for frontend (optionally configure origin)
 app.use(cors());
@@ -33,6 +35,9 @@ app.use(express.urlencoded({ extended: true }));
 
 //use logger middleware
 app.use(morgan("dev"));
+
+// Handle upload errors
+app.use(handleUploadErrors);
 
 //------------------ Get MongoDB connection info from .env
 const { MONGO_USER, MONGO_PASS, MONGO_DB, MONGO_PORT, MONGO_HOST, PORT } = process.env;

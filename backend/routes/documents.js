@@ -6,6 +6,7 @@ import { createDocument, getAllDocuments, getDocumentById, updateDocument, delet
 
 //------------------ Import Middleware
 import upload from "../middleware/upload.js";
+import handleUploadErrors from "../middleware/handleUploadErrors.js";
 import { validateObjectId } from "../middleware/validateObjectId.js";
 import { validateRequiredFields } from "../middleware/validateRequiredFields.js";
 
@@ -16,6 +17,7 @@ const router = express.Router();
 router.post(
 	"/",
 	upload.single("file"),
+	handleUploadErrors,
 	validateRequiredFields(["userId", "title"]),
 	createDocument
 );
