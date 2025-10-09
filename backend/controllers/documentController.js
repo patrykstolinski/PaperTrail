@@ -13,12 +13,21 @@ export const createDocument = async (req, res) => {
             return res.status(400).json({ success: false, error: "No file uploaded." });
         }
 
+        // Log file details before saving
+        console.log('File details:', {
+            originalSize: file.size,
+            bufferSize: file.buffer.length,
+            mimetype: file.mimetype,
+            originalName: file.originalname
+        });
+
         const doc = new Document({
             userId,
             title,
             fileType: file.mimetype || fileType,
             originalFileName: file.originalname || originalFileName,
             fileBinaryData: file.buffer,
+            fileSize: file.size,
             extractedFields: extractedFields || {},
             tags: tags || [],
         });

@@ -40,6 +40,15 @@ const DocumentSchema = new Schema(
       required: true,
       trim: true,
       index: true,
+      enum: ['application/pdf', 'image/png', 'image/jpeg'],
+      message: props => `${props.value} is not a supported file type!`
+    },
+    fileSize: {
+      type: Number,
+      required: true,
+      index: true,
+      immutable: true,
+      min: [1, 'File size must be greater than 0 bytes']
     },
     title: {
       type: String,
