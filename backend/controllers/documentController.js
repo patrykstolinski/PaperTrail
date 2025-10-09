@@ -2,45 +2,41 @@ import Document from "../models/Document.js";
 import mongoose from "mongoose";
 
 // CREATE a new Document 
-export const createDocument = async (req,res) => {
 
-    try{
-        // deconstruct the request body
-        const { userId, title, fileType, originalFileName, extractedFields, tags, fileBinaryData } = req.body;  
-        
-        // Decode the bytes of the file into something usable 
-        const fileBuffer = Buffer.from(fileBinaryData, "base64");
-        // Assume required fields are validated by middleware
-        
+export const createDocument = async (req, res) => {
+    try {
+        // Get metadata from req.body and file from req.file
+        const { userId, title, fileType, originalFileName, extractedFields, tags } = req.body;
+        const file = req.file;
+
+        if (!file) {
+            return res.status(400).json({ success: false, error: "No file uploaded." });
+        }
+
         const doc = new Document({
             userId,
             title,
-            fileType,
-            originalFileName,
-            fileBinaryData: fileBuffer,
+            fileType: file.mimetype || fileType,
+            originalFileName: file.originalname || originalFileName,
+            fileBinaryData: file.buffer,
             extractedFields: extractedFields || {},
             tags: tags || [],
         });
-        // save the file
         await doc.save();
-        // return OK and saved file 
-        res.status(201).json({ success: true, data:doc});
+        res.status(201).json({ success: true, id: doc._id });
     } catch (err) {
-        // catch duplicates
         if (err.code === 11000) {
-            // Use index name to distinguish duplicate type
             if (err.message && err.message.includes('unique_title_per_user')) {
-                res.status(400).json({ success: false, error: "Duplicate title: You have already uploaded a document with this title." });
+                res.status(400).json({ success: false, error: "Duplicate title: You have already uploaded a document with this title. Bruh." });
                 return;
             }
             if (err.message && err.message.includes('unique_file_per_user')) {
-                res.status(400).json({ success: false, error: "Duplicate file: You have already uploaded this file." });
+                res.status(400).json({ success: false, error: "Duplicate file: You have already uploaded this file. Bruh." });
                 return;
             }
-
         }
         console.error("Error creating the document", err);
-        res.status(500).json({ success: false, error: err.message});
+        res.status(500).json({ success: false, error: err.message });
     }
 };
 

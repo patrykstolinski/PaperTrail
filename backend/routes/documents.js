@@ -3,7 +3,9 @@ import express from "express";
 // import functions to do stuff to the document
 import { createDocument, getAllDocuments, getDocumentById, updateDocument, deleteDocument } from "../controllers/documentController.js";
 
-// import midlleware
+
+//------------------ Import Middleware
+import upload from "../middleware/upload.js";
 import { validateObjectId } from "../middleware/validateObjectId.js";
 import { validateRequiredFields } from "../middleware/validateRequiredFields.js";
 
@@ -11,7 +13,12 @@ const router = express.Router();
 
 //POST /api/documents
 
-router.post("/", validateRequiredFields(["userId", "title", "fileType", "originalFileName", "fileBinaryData"]), createDocument);
+router.post(
+	"/",
+	upload.single("file"),
+	validateRequiredFields(["userId", "title"]),
+	createDocument
+);
 
 //GET /api/documents
 router.get("/", getAllDocuments);

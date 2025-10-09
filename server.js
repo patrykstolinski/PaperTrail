@@ -31,19 +31,6 @@ app.use(express.json({limit: "50mb"}));
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
 
-//------------------ Test Multer Upload Route
-app.post("/test-upload", upload.single("file"), (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ success: false, error: "No file uploaded or invalid file type/size." });
-    }
-    res.json({
-        success: true,
-        originalName: req.file.originalname,
-        mimeType: req.file.mimetype,
-        size: req.file.size
-    });
-});
-
 //use logger middleware
 app.use(morgan("dev"));
 
