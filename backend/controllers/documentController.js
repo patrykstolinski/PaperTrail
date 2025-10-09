@@ -28,18 +28,22 @@ export const createDocument = async (req,res) => {
     } catch (err) {
         // catch duplicates
         if (err.code === 11000) {
-            const field = Object.keys(err.keyPattern)[0];
-            return res.status(400).json({
-                success:false,
-                error: field === "title"
-                ? "A document with this title already exists for this user."
-                : "You already uploaded this file."
-            });
+            // Use index name to distinguish duplicate type
+            if (err.message && err.message.includes('unique_title_per_user')) {
+                res.status(400).json({ success: false, error: "Duplicate title: You have already uploaded a document with this title." });
+                return;
+            }
+            if (err.message && err.message.includes('unique_file_per_user')) {
+                res.status(400).json({ success: false, error: "Duplicate file: You have already uploaded this file." });
+                return;
+            }
+
         }
         console.error("Error creating the document", err);
         res.status(500).json({ success: false, error: err.message});
     }
 };
+
 // READ all documents
 export const getAllDocuments = async (req, res) => {
     try {
