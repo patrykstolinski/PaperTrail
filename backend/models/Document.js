@@ -78,7 +78,7 @@ const DocumentSchema = new Schema(
                 return value >= new Date();
               },
               message: "Reminder date cannot be in the past, bruh"
-            }
+            },
           },
           message: {
             type: String,
@@ -88,8 +88,8 @@ const DocumentSchema = new Schema(
           sent: {
             type: Boolean,
             default: false,
-          }
-        }
+          },
+        },
     ],
 
     // ------ Ownership & workflow ------
@@ -112,7 +112,7 @@ const DocumentSchema = new Schema(
     strict: true,
   }
 );
-
+    // ------ Indexes ------
 DocumentSchema.index({
   title: "text",
   tags: "text",
@@ -123,6 +123,21 @@ DocumentSchema.index({ ocrDate: -1 });
 DocumentSchema.index({ fileType: 1 });
 DocumentSchema.index({ status: 1 });
 DocumentSchema.index({ userId: 1 });
+
+    // ------ Unique constraints ------
+    
+    // ------ user cannot upload documents with the same title twice
+DocumentSchema.index(
+  { userId: 1, title: 1},
+  { unique: true, name: "unique_title_per_user"}
+);
+
+    // ------ user cannot upload the same FILE (even with different titles) twice
+DocumentSchema.index(
+  { userId: 1, fileBinaryData: 1 },
+  { unique: true, name: "unique_file_per_user" }
+)
+
 
 // export the schema
 const Document = mongoose.model('Document', DocumentSchema);
