@@ -1,4 +1,5 @@
 import Document from "../models/Document.js";
+import { computeFileHash, computeTitleHmac } from "../utils/hashHelpers.js";
 import mongoose from "mongoose";
 
 // CREATE a new Document 
@@ -6,7 +7,7 @@ import mongoose from "mongoose";
 export const createDocument = async (req, res) => {
     try {
         // Get metadata from req.body and file from req.file
-        const { userId, title, fileType, originalFileName, extractedFields, tags } = req.body;
+        const { title, fileType, originalFileName, extractedFields, tags } = req.body;
         const file = req.file;
 
         if (!file) {
@@ -21,9 +22,18 @@ export const createDocument = async (req, res) => {
             originalName: file.originalname
         });
 
+        // enforce ownership from authenticated user
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
+
+        const fileHash = computeFileHash(file.buffer);
+        const titleHash = computeTitleHmac(title);
+
         const doc = new Document({
-            userId,
+            userId: ownerId,
             title,
+            titleHash,
+            fileHash,
             fileType: file.mimetype || fileType,
             originalFileName: file.originalname || originalFileName,
             fileBinaryData: file.buffer,
@@ -52,10 +62,14 @@ export const createDocument = async (req, res) => {
 // READ all documents
 export const getAllDocuments = async (req, res) => {
     try {
-        // find all documents and sort them from newest to oldest
-        const docs = await Document.find().sort({ uploadDate: -1 });
-        // deliver all documents
-        res.json({ success: true, data: docs});
+        // scope to authenticated user only
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user, Bruhhhh" });
+
+        // find documents for this user and sort by newest->oldest
+        // exclude binary data from the listing response to save bandwidth/memory
+        const docs = await Document.find({ userId: ownerId }).select('-fileBinaryData').sort({ uploadDate: -1 });
+        res.json({ success: true, data: docs });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
@@ -69,26 +83,56 @@ export const getDocumentById = async (req, res) => {
         const doc = await Document.findById(id);
         // if not found, return 404
         if (!doc) return res.status(404).json({ success:false, error: "Document not found." });
-        // if found, deliver data
-        res.json({ success: true, data: doc });
+        // verify ownership
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user, Bruh" });
+        if (doc.userId && doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
+
+                // if found and owned, deliver data (exclude binary by default)
+                res.json({ success: true, data: doc });
     } catch (err) {
         res.status(500).json({ success:false, error: err.message });
     }
 }
+
+// DOWNLOAD file bytes for a document (auth + ownership verified)
+export const downloadDocumentFile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const doc = await Document.findById(id);
+        if (!doc) return res.status(404).json({ success: false, error: 'Document not found' });
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+        if (doc.userId && doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: 'Forbidden' });
+
+        res.setHeader('Content-Type', doc.fileType || 'application/octet-stream');
+        res.setHeader('Content-Disposition', `attachment; filename="${doc.originalFileName || 'file'}"`);
+        // send buffer (okay for small files); for large files use GridFS or streaming
+        res.send(doc.fileBinaryData);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
 
 // UPDATE a document by ID
 export const updateDocument = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const updatedDoc = await Document.findByIdAndUpdate(id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+        // ensure document exists and is owned by requester
+        const doc = await Document.findById(id);
+        if (!doc) return res.status(404).json({ success: false, error: "Document not found, bruhhh" });
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
+        if (doc.userId && doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
 
-    if (!updatedDoc) return res.status(404).json({ success: false, error: "Document not found, bruhhh" });
+        // apply updates (note: do not allow changing userId)
+        const allowed = { ...req.body };
+        delete allowed.userId;
 
-    res.json({ success: true, data: updatedDoc });
+        Object.assign(doc, allowed);
+        await doc.save();
+        res.json({ success: true, data: doc });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -99,11 +143,14 @@ export const updateDocument = async (req, res) => {
 export const deleteDocument = async (req,res) => {
     try {
         const { id } = req.params;
-        const deletedDoc = await Document.findByIdAndDelete(id);
-        
-        if(!deletedDoc) {
-            return res.status(404).json({ success:false, error: "Document not found, bruh" });            
-        }
+        // ensure exists and owned
+        const doc = await Document.findById(id);
+        if (!doc) return res.status(404).json({ success:false, error: "Document not found, bruh" });
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
+        if (doc.userId && doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
+
+        await doc.deleteOne();
         res.json({ success: true, data: `Document ${id} deleted successfully.` });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message});

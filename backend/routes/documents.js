@@ -1,14 +1,14 @@
 import express from "express";
 
 // import functions to do stuff to the document
-import { createDocument, getAllDocuments, getDocumentById, updateDocument, deleteDocument } from "../controllers/documentController.js";
+import { createDocument, getAllDocuments, getDocumentById, updateDocument, deleteDocument, downloadDocumentFile } from "../controllers/documentController.js";
 
 
 //------------------ Import Middleware
 import upload from "../middleware/upload.js";
-import handleUploadErrors from "../middleware/handleUploadErrors.js";
 import { validateObjectId } from "../middleware/validateObjectId.js";
 import { validateRequiredFields } from "../middleware/validateRequiredFields.js";
+import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
@@ -16,22 +16,25 @@ const router = express.Router();
 
 router.post(
 	"/",
+	auth,
 	upload.single("file"),
-	handleUploadErrors,
-	validateRequiredFields(["userId", "title"]),
+	validateRequiredFields(["title"]), // userId is set from req.user
 	createDocument
 );
 
 //GET /api/documents
-router.get("/", getAllDocuments);
+router.get("/", auth, getAllDocuments);
 
 //GET /api/documents/:id
-router.get("/:id", validateObjectId, getDocumentById);
+router.get("/:id", auth, validateObjectId, getDocumentById);
+
+//GET /api/documents/:id/download
+router.get("/:id/download", auth, validateObjectId, downloadDocumentFile);
 
 //PUT /api/documents/:id
-router.put("/:id", validateObjectId, updateDocument);
+router.put("/:id", auth, validateObjectId, updateDocument);
 
 //DELETE /api/documents/:id
-router.delete("/:id", validateObjectId, deleteDocument);
+router.delete("/:id", auth, validateObjectId, deleteDocument);
 
 export default router;

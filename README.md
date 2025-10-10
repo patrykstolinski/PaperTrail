@@ -236,6 +236,48 @@ Zugriff auf Mongo Express: http://localhost:8081
 - PORT=4000
 ```
 
+### Developer auth & quick-testing
+
+- DEV_AUTH=true enables a developer authentication mode that bypasses full login flows. When enabled the server will accept a developer user from one of two sources (priority order):
+  1. `X-Dev-User-Id` request header (per-request impersonation)
+  2. `DEV_CURRENT_USER_ID` environment variable (global dev user)
+
+Examples (.env):
+```
+DEV_AUTH=true
+DEV_CURRENT_USER_ID=650000000000000000000001
+```
+
+Notes:
+- Use header `X-Dev-User-Id` in Postman to act as different users without restarting the server.
+- If no header is present and `DEV_CURRENT_USER_ID` is set, the server treats requests as coming from that user.
+- Do NOT enable `DEV_AUTH` in production.
+
+### Hashing, indexes and file handling (MVP changes)
+
+We made a few schema and controller changes to make duplicate-detection reliable and avoid indexing raw binary data:
+
+- `fileHash` (SHA-256 hex) is stored for each uploaded file and used for per-user duplicate-file detection.
+- `titleHash` (HMAC-SHA256) is stored for each title and used for per-user duplicate-title detection. Set `HMAC_SECRET` in `.env` for stable hashes:
+```
+HMAC_SECRET=some_long_secret_value
+```
+- The schema no longer indexes the raw `fileBinaryData` Buffer. Instead we use compound unique indexes:
+  - `{ userId: 1, fileHash: 1 }` (unique)
+  - `{ userId: 1, titleHash: 1 }` (unique)
+
+- `GET /api/documents` returns metadata only (it excludes `fileBinaryData` to save bandwidth/memory). Use `GET /api/documents/:id/download` to download the file bytes (the route checks ownership and streams a small Buffer; for large files switch to GridFS/S3).
+
+### Recommended env vars for production / staging
+- `HMAC_SECRET` — deterministic HMAC key for title hashing (do not change once data exists)
+- `JWT_SECRET` — used for signing/verifying production JWTs
+- `DEV_AUTH` / `DEV_CURRENT_USER_ID` — dev-only helpers; keep disabled in prod
+
+### Notes
+- We consolidated schema index definitions using `DocumentSchema.index(...)` so all indexes are declared in one place (avoids duplicate index warnings from Mongoose).
+- If you change hashing secrets after uploading data you may encounter uniqueness collisions; keep `HMAC_SECRET` stable across deployments or re-hash/migrate data.
+
+
 ### Erklaerung der Variablen
 | Variable     | Beschreibung                                               |
 | ------------ | ---------------------------------------------------------- |

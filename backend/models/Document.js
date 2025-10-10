@@ -20,33 +20,31 @@ const DocumentSchema = new Schema(
     // ------ Required fields ------
     //enables files under 16mb - if ever over 16mb, use GridFS
     fileBinaryData: {
-        type: Buffer,
-        required: true
+    type: Buffer,
+    required: true
     },
     originalFileName: {
       type: String,
       required: true,
       trim: true,
-      index: true,
     },
     uploadDate: {
       type: Date,
       default: Date.now,
-      index: true,
       immutable: true,
     },
     fileType: {
       type: String,
       required: true,
       trim: true,
-      index: true,
-      enum: ['application/pdf', 'image/png', 'image/jpeg'],
-      message: props => `${props.value} is not a supported file type!`
+      enum: {
+        values: ['application/pdf', 'image/png', 'image/jpeg'],
+        message: (props) => `${props.value} is not a supported file type!`
+      }
     },
     fileSize: {
       type: Number,
       required: true,
-      index: true,
       immutable: true,
       min: [1, 'File size must be greater than 0 bytes']
     },
@@ -54,11 +52,16 @@ const DocumentSchema = new Schema(
       type: String,
       required: true,
       trim: true,
-      index: true,
+    },
+    // deterministic hashes for dedup and indexing (do not index raw Buffer)
+    titleHash: {
+      type: String,
+    },
+    fileHash: {
+      type: String,
     },
     ocrDate: {
       type: Date,
-      index: true,
     },
     archived: {
       type: Boolean,
@@ -74,7 +77,6 @@ const DocumentSchema = new Schema(
     tags: {
       type: [String],
       default: [],
-      index: true,
     },
     // ------ Optional reminder system with required fields (if reminder exists) ------
     reminders: [
@@ -106,21 +108,18 @@ const DocumentSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
       immutable: true,
     },
     status: {
       type: String,
       enum: ["uploaded", "processing", "review", "completed"],
       default: "uploaded",
-      index: true,
     },
     folder: {
       type: String,
       required: true,
       trim: true,
       default: "documents",
-      index: true,
     },
   },
   {
@@ -140,21 +139,20 @@ DocumentSchema.index({ fileType: 1 });
 DocumentSchema.index({ status: 1 });
 DocumentSchema.index({ userId: 1 });
 
-    // ------ Unique constraints ------
-    
-    // ------ user cannot upload documents with the same title twice
+// ------ Unique constraints ------
+// user cannot upload documents with the same title twice (per-user)
 DocumentSchema.index(
-  { userId: 1, title: 1},
+  { userId: 1, titleHash: 1},
   { unique: true, name: "unique_title_per_user"}
 );
 
-    // ------ user cannot upload the same FILE (even with different titles) twice
+// user cannot upload the same FILE (even with different titles) twice (per-user)
 DocumentSchema.index(
-  { userId: 1, fileBinaryData: 1 },
+  { userId: 1, fileHash: 1 },
   { unique: true, name: "unique_file_per_user" }
 )
 
 
-// export the schema
-const Document = mongoose.model('Document', DocumentSchema);
-export default mongoose.models.Document || mongoose.model("Document", DocumentSchema);
+// export the model (avoid double registration when hot-reloading in dev)
+const Document = mongoose.models.Document || mongoose.model("Document", DocumentSchema);
+export default Document;

@@ -34,8 +34,7 @@ app.use(express.urlencoded({ extended: true }));
 //use logger middleware
 app.use(morgan("dev"));
 
-// Handle upload errors
-app.use(handleUploadErrors);
+
 
 //------------------ Get MongoDB connection info from .env
 const { MONGO_USER, MONGO_PASS, MONGO_DB, MONGO_PORT, MONGO_HOST, PORT } = process.env;
@@ -59,6 +58,9 @@ app.get("/health", (req, res) => {
 //------------------ Main routes
 
 app.use("/api/documents", documentRoutes);
+
+// Handle upload errors (Multer) - register after routes so it can catch errors
+app.use(handleUploadErrors);
 
 // Catch-all for unmatched routes (404)
 app.use(notFound);
