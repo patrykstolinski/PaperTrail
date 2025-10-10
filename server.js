@@ -19,8 +19,6 @@ import morgan from "morgan";
 import errorHandler from "./backend/middleware/errorHandler.js";
 // Not Found Middleware
 import notFound from "./backend/middleware/notFound.js";
-// upload middleware 
-import upload from "./backend/middleware/upload.js";
 // upload error handling middleware
 import handleUploadErrors from "./backend/middleware/handleUploadErrors.js";
 

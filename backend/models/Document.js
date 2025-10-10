@@ -111,8 +111,15 @@ const DocumentSchema = new Schema(
     },
     status: {
       type: String,
-      enum: ["uploaded", "processing", "review", "completed", "archived"],
+      enum: ["uploaded", "processing", "review", "completed"],
       default: "uploaded",
+      index: true,
+    },
+    folder: {
+      type: String,
+      required: true,
+      trim: true,
+      default: "documents",
       index: true,
     },
   },
