@@ -1,4 +1,5 @@
 import Folder from "../models/Folder.js";
+import Document from "../models/Document.js";
 import mongoose from "mongoose";
 
 // CREATE a new folder
@@ -53,12 +54,89 @@ export const listFolders = async (req, res) => {
     const ownerId = req.user && req.user.id;
     if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
 
-    const { parentId } = req.query;
+    const { parentId, minimal } = req.query;
     const filter = { userId: ownerId };
     if (parentId) filter.parentId = parentId;
 
-    const folders = await Folder.find(filter).sort({ name: 1 });
-    res.json({ success: true, data: folders });
+    if (minimal && String(minimal) === 'true') {
+      // Return lightweight folder list for frontend dropdowns
+      const folders = await Folder.find(filter).select('name slug color parentId').sort({ name: 1 });
+      return res.json({ success: true, data: folders });
+    }
+
+    // Default: return full folder objects with an added document count
+    const folders = await Folder.find(filter).sort({ name: 1 }).lean();
+    // attach document counts per folder (aggregate in JS to avoid adding complex pipelines here)
+    const ids = folders.map(f => f._id);
+    const counts = await Document.aggregate([
+      { $match: { folderId: { $in: ids } } },
+      { $group: { _id: '$folderId', count: { $sum: 1 } } }
+    ]);
+    const countsMap = new Map(counts.map(c => [String(c._id), c.count]));
+    const enriched = folders.map(f => ({ ...f, documentCount: countsMap.get(String(f._id)) || 0 }));
+    res.json({ success: true, data: enriched });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET folder by slug for the authenticated user
+export const getFolderBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const ownerId = req.user && req.user.id;
+    if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+    const folder = await Folder.findOne({ userId: ownerId, slug });
+    if (!folder) return res.status(404).json({ success: false, error: 'Folder not found' });
+    res.json({ success: true, data: folder });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET documents in folder (shorthand)
+export const getDocumentsInFolder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const ownerId = req.user && req.user.id;
+    if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, error: 'Invalid folder id' });
+    const folder = await Folder.findById(id);
+    if (!folder) return res.status(404).json({ success: false, error: 'Folder not found' });
+    if (folder.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: 'Forbidden' });
+
+    // proxy to Document listing by folderId
+    const docs = await Document.find({ userId: ownerId, folderId: id }).select('-fileBinaryData').sort({ createdAt: -1 });
+    res.json({ success: true, data: docs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// Bulk move documents into this folder
+export const bulkMoveDocuments = async (req, res) => {
+  try {
+    const { id } = req.params; // destination folder id
+    const { documentIds } = req.body;
+    const ownerId = req.user && req.user.id;
+    if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+    if (!Array.isArray(documentIds) || documentIds.length === 0) return res.status(400).json({ success: false, error: 'documentIds must be a non-empty array' });
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ success: false, error: 'Invalid destination folder id' });
+
+    const folder = await Folder.findById(id);
+    if (!folder) return res.status(404).json({ success: false, error: 'Destination folder not found' });
+    if (folder.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: 'Destination folder not owned by you' });
+
+    // Validate ownership of documents, then update
+    const objectIds = documentIds.filter(d => mongoose.Types.ObjectId.isValid(d)).map(d => mongoose.Types.ObjectId(d));
+    const docs = await Document.find({ _id: { $in: objectIds } });
+    // ensure all documents belong to owner
+    for (const doc of docs) {
+      if (doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: `Document ${doc._id} not owned by you` });
+    }
+
+    await Document.updateMany({ _id: { $in: objectIds } }, { $set: { folderId: folder._id } });
+    res.json({ success: true, data: { moved: docs.length, folderId: folder._id } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -121,12 +199,35 @@ export const deleteFolder = async (req, res) => {
     const ownerId = req.user && req.user.id;
     if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
     if (folder.userId && folder.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
-
-    // Default policy: refuse to delete if folder has children or documents. Frontend can request a force-delete.
+    // Default policy: refuse to delete if folder has children; also check for documents
     const childCount = await Folder.countDocuments({ parentId: folder._id });
-    if (childCount > 0) return res.status(400).json({ success: false, error: "Folder has child folders; remove or move them first huehue" });
+    const docCount = await Document.countDocuments({ folderId: folder._id });
+    const force = req.query && String(req.query.force) === 'true';
 
-    // Note: documents check should be performed by caller or by enabling a force option; not implemented here.
+    if (!force) {
+      if (childCount > 0) return res.status(400).json({ success: false, error: "Folder has child folders; remove or move them first" });
+      if (docCount > 0) return res.status(400).json({ success: false, error: "Folder contains documents; use ?force=true to delete them" });
+    }
+
+    // If force, delete documents and child folders recursively
+    if (force) {
+      // delete documents in this folder
+      await Document.deleteMany({ folderId: folder._id });
+      // recursively delete child folders and their documents
+      const stack = [folder._id];
+      while (stack.length) {
+        const current = stack.pop();
+        const children = await Folder.find({ parentId: current }).select('_id');
+        for (const c of children) {
+          stack.push(c._id);
+        }
+        await Document.deleteMany({ folderId: current });
+        await Folder.deleteMany({ _id: current });
+      }
+      return res.json({ success: true, data: `Folder ${id} and its contents deleted.` });
+    }
+
+    // If not force and no children/docs, safe to delete
     await folder.deleteOne();
     res.json({ success: true, data: `Folder ${id} deleted successfully.` });
   } catch (err) {
