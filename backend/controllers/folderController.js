@@ -10,6 +10,10 @@ export const createFolder = async (req, res) => {
     const { name, slug, description, color, parentId, metadata } = req.body;
     if (!name) return res.status(400).json({ success: false, error: "Folder name is required, bruh, wth" });
 
+  // Ensure name uniqueness per-user (friendly pre-check). The DB unique index is the ultimate guard.
+  const existingByName = await Folder.findOne({ userId: ownerId, name });
+  if (existingByName) return res.status(409).json({ success: false, error: "You already have a folder with that name" });
+
     // If parentId provided, ensure it's a valid ObjectId and belongs to the same user
     if (parentId) {
       if (!mongoose.Types.ObjectId.isValid(parentId)) return res.status(400).json({ success: false, error: "Invalid parentId" });
@@ -32,7 +36,11 @@ export const createFolder = async (req, res) => {
     res.status(201).json({ success: true, data: folder });
   } catch (err) {
     if (err.code === 11000) {
-      return res.status(409).json({ success: false, error: "Folder slug already exists for this user" });
+      // Determine which unique constraint failed if possible
+      const msg = err.message || "Duplicate key";
+      if (msg.includes('unique_folder_name_per_user')) return res.status(409).json({ success: false, error: "Folder name already exists for this user" });
+      if (msg.includes('unique_folder_slug_per_user')) return res.status(409).json({ success: false, error: "Folder slug already exists for this user" });
+      return res.status(409).json({ success: false, error: "Folder conflict: duplicate value" });
     }
     console.error("Error creating folder", err);
     res.status(500).json({ success: false, error: err.message });
@@ -87,6 +95,11 @@ export const updateFolder = async (req, res) => {
 
     // Prevent setting parent to self
     if (allowed.parentId && allowed.parentId.toString() === id.toString()) return res.status(400).json({ success: false, error: "Folder cannot be its own parent" });
+    // If name is changing, ensure uniqueness for this user
+    if (allowed.name && allowed.name !== folder.name) {
+      const exists = await Folder.findOne({ userId: ownerId, name: allowed.name });
+      if (exists) return res.status(409).json({ success: false, error: "Folder name already exists for this user" });
+    }
 
     Object.assign(folder, allowed);
     await folder.save();

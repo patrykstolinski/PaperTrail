@@ -27,6 +27,14 @@ const FolderSchema = new Schema(
       required: true,
       trim: true,
     },
+    // Normalized name for case-insensitive uniqueness checks and searches
+    nameLower: {
+      type: String,
+      required: false,
+      trim: true,
+      lowercase: true,
+      index: true,
+    },
 
     // URL-safe short id for link/routing. Should be unique per user.
     slug: {
@@ -91,6 +99,11 @@ FolderSchema.pre("validate", function (next) {
     this.slug = makeSlug(this.name);
   }
 
+  // Maintain normalized name for case-insensitive uniqueness
+  if (this.name) {
+    this.nameLower = String(this.name).toLowerCase().trim();
+  }
+
   // Prevent a folder from being its own parent
   if (this.parentId && this._id && this.parentId.toString() === this._id.toString()) {
     return next(new Error("Folder cannot be its own parent"));
@@ -101,7 +114,15 @@ FolderSchema.pre("validate", function (next) {
 
 // Indexes
 // - unique slug per user for stable routing and to prevent collisions
+// Unique slug per user for stable routing and to prevent collisions
 FolderSchema.index({ userId: 1, slug: 1 }, { unique: true, name: "unique_folder_slug_per_user" });
+// Unique folder name per user (controller also checks to give friendlier errors).
+// Note: this index is case-sensitive by default; if you need case-insensitive
+// uniqueness consider migrating to a normalized field (nameLower) with a
+// collation or using a plugin. For now we enforce exact-name uniqueness.
+FolderSchema.index({ userId: 1, name: 1 }, { unique: true, name: "unique_folder_name_per_user" });
+// Case-insensitive uniqueness via normalized nameLower
+FolderSchema.index({ userId: 1, nameLower: 1 }, { unique: true, name: "unique_folder_nameLower_per_user" });
 // - help listing children or folders by name
 FolderSchema.index({ userId: 1, parentId: 1, name: 1 });
 // - text search on name/description for quick folder lookup

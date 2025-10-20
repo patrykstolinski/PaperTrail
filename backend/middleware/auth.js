@@ -7,16 +7,17 @@ const auth = (req, res, next) => {
   const devAuth = process.env.DEV_AUTH === "true" || process.env.NODE_ENV === "development";
 
   if (devAuth) {
-    // Priority: X-Dev-User-Id header -> DEV_CURRENT_USER_ID env var
-    const devUserHeader = req.get("X-Dev-User-Id");
-    if (devUserHeader) {
-      req.user = { id: devUserHeader };
-      return next();
-    }
-
+    // Prefer DEV_CURRENT_USER_ID env var when present (explicit dev config).
+    // Fall back to X-Dev-User-Id header only if the env var is not set.
     const envDevUser = process.env.DEV_CURRENT_USER_ID;
     if (envDevUser) {
       req.user = { id: envDevUser };
+      return next();
+    }
+
+    const devUserHeader = req.get("X-Dev-User-Id");
+    if (devUserHeader) {
+      req.user = { id: devUserHeader };
       return next();
     }
 

@@ -81,9 +81,21 @@ export const getAllDocuments = async (req, res) => {
         const ownerId = req.user && req.user.id;
         if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user, Bruhhhh" });
 
-        // find documents for this user and sort by newest->oldest
-        // exclude binary data from the listing response to save bandwidth/memory
-        const docs = await Document.find({ userId: ownerId }).select('-fileBinaryData').sort({ uploadDate: -1 });
+                // Optional filter: folderId (only documents in that folder)
+                const { folderId } = req.query;
+                const filter = { userId: ownerId };
+                if (folderId) {
+                    if (!mongoose.Types.ObjectId.isValid(folderId)) return res.status(400).json({ success: false, error: "Invalid folderId" });
+                    // Ensure folder belongs to user
+                    const folderDoc = await Folder.findById(folderId);
+                    if (!folderDoc) return res.status(400).json({ success: false, error: "Folder not found" });
+                    if (folderDoc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Folder not owned by you" });
+                    filter.folderId = folderId;
+                }
+
+                // find documents for this user and sort by newest->oldest
+                // exclude binary data from the listing response to save bandwidth/memory
+                const docs = await Document.find(filter).select('-fileBinaryData').sort({ uploadDate: -1 });
         res.json({ success: true, data: docs });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
