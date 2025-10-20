@@ -110,11 +110,12 @@ const DocumentSchema = new Schema(
       enum: ["uploaded", "processing", "review", "completed"],
       default: "uploaded",
     },
-    folder: {
-      type: String,
-      required: true,
-      trim: true,
-      default: "documents",
+    // First-class folder reference (optional). Prefer this for lookups and integrity.
+    folderId: {
+      type: Schema.Types.ObjectId,
+      ref: "Folder",
+      default: null,
+      index: true,
     },
   },
   {

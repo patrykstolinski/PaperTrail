@@ -1,4 +1,5 @@
 import Document from "../models/Document.js";
+import Folder from "../models/Folder.js";
 import { computeFileHash, computeTitleHmac } from "../utils/hashHelpers.js";
 import mongoose from "mongoose";
 
@@ -28,8 +29,19 @@ export const createDocument = async (req, res) => {
 
     // Salt the file hash with ownerId so identical files uploaded by different users
     // won't collide in the global hash space. This preserves per-user dedupe behavior.
-    const fileHash = computeFileHash(file.buffer, ownerId);
-        const titleHash = computeTitleHmac(title);
+                // If a folderId was provided, validate it belongs to the owner and fetch name for legacy `folder` field.
+                let resolvedFolderName = undefined;
+                let folderIdVal = req.body && req.body.folderId;
+                if (folderIdVal) {
+                    if (!mongoose.Types.ObjectId.isValid(folderIdVal)) return res.status(400).json({ success: false, error: "Invalid folderId" });
+                    const folderDoc = await Folder.findById(folderIdVal);
+                    if (!folderDoc) return res.status(400).json({ success: false, error: "Folder not found" });
+                    if (folderDoc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Folder not owned by you" });
+                    resolvedFolderName = folderDoc.name;
+                }
+
+                const fileHash = computeFileHash(file.buffer, ownerId);
+                const titleHash = computeTitleHmac(title);
 
         const doc = new Document({
             userId: ownerId,
@@ -42,6 +54,7 @@ export const createDocument = async (req, res) => {
             fileSize: file.size,
             extractedFields: extractedFields || {},
             tags: tags || [],
+            folderId: folderIdVal || null,
         });
         await doc.save();
         res.status(201).json({ success: true, id: doc._id });
@@ -129,10 +142,19 @@ export const updateDocument = async (req, res) => {
         if (doc.userId && doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
 
         // apply updates (note: do not allow changing userId)
-        const allowed = { ...req.body };
-        delete allowed.userId;
+                const allowed = { ...req.body };
+                delete allowed.userId;
 
-        Object.assign(doc, allowed);
+                // If folderId is being set/changed, validate ownership
+                if (allowed.folderId) {
+                    const folderIdVal = allowed.folderId;
+                    if (!mongoose.Types.ObjectId.isValid(folderIdVal)) return res.status(400).json({ success: false, error: "Invalid folderId" });
+                    const folderDoc = await Folder.findById(folderIdVal);
+                    if (!folderDoc) return res.status(400).json({ success: false, error: "Folder not found" });
+                    if (folderDoc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Folder not owned by you" });
+                }
+
+                Object.assign(doc, allowed);
         await doc.save();
         res.json({ success: true, data: doc });
   } catch (err) {

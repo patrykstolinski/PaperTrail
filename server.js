@@ -8,6 +8,7 @@ import cors from "cors";
 
 //------------------ import routes
 import documentRoutes from "./backend/routes/documents.js";
+import folderRoutes from "./backend/routes/folders.js";
 
 //------------------ initialise Express App
 const app = express();
@@ -58,6 +59,7 @@ app.get("/health", (req, res) => {
 //------------------ Main routes
 
 app.use("/api/documents", documentRoutes);
+app.use("/api/folders", folderRoutes);
 
 // Handle upload errors (Multer) - register after routes so it can catch errors
 app.use(handleUploadErrors);
