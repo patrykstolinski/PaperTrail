@@ -133,6 +133,30 @@ export const getFolderBySlug = async (req, res) => {
   }
 };
 
+// GET documents in folder by slug (user-scoped)
+export const getDocumentsInFolderBySlug = async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const ownerId = req.user && req.user.id;
+    if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+    const folder = await Folder.findOne({ userId: ownerId, slug });
+    if (!folder) return res.status(404).json({ success: false, error: 'Folder not found' });
+    // reuse getDocumentsInFolder logic by querying Documents directly
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize || req.query.limit) || null;
+    if (pageSize) {
+      const totalCount = await Document.countDocuments({ userId: ownerId, folderId: folder._id });
+      const skip = (page - 1) * pageSize;
+      const docs = await Document.find({ userId: ownerId, folderId: folder._id }).select('-fileBinaryData').sort({ createdAt: -1 }).skip(skip).limit(pageSize);
+      return res.json({ success: true, data: docs, meta: { totalCount, page, pageSize } });
+    }
+    const docs = await Document.find({ userId: ownerId, folderId: folder._id }).select('-fileBinaryData').sort({ createdAt: -1 });
+    res.json({ success: true, data: docs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 // GET documents in folder (shorthand)
 export const getDocumentsInFolder = async (req, res) => {
   try {

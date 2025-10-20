@@ -125,7 +125,8 @@ export const getDocumentById = async (req, res) => {
         // ID from parameters
         const { id } = req.params;
         // find document with that ID
-        const doc = await Document.findById(id);
+        // exclude binary data for metadata responses
+        const doc = await Document.findById(id).select('-fileBinaryData');
         // if not found, return 404
         if (!doc) return res.status(404).json({ success:false, error: "Document not found." });
         // verify ownership
@@ -133,7 +134,7 @@ export const getDocumentById = async (req, res) => {
         if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user, Bruh" });
         if (doc.userId && doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
 
-                // if found and owned, deliver data (exclude binary by default)
+                // if found and owned, deliver data (binary excluded above)
                 res.json({ success: true, data: doc });
     } catch (err) {
         res.status(500).json({ success:false, error: err.message });
@@ -186,7 +187,10 @@ export const updateDocument = async (req, res) => {
 
                 Object.assign(doc, allowed);
         await doc.save();
-        res.json({ success: true, data: doc });
+                        // avoid returning binary data in update response
+                        const out = doc.toObject ? doc.toObject() : doc;
+                        if (out.fileBinaryData) delete out.fileBinaryData;
+                        res.json({ success: true, data: out });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
