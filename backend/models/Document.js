@@ -28,11 +28,6 @@ const DocumentSchema = new Schema(
       required: true,
       trim: true,
     },
-    uploadDate: {
-      type: Date,
-      default: Date.now,
-      immutable: true,
-    },
     fileType: {
       type: String,
       required: true,

@@ -26,7 +26,9 @@ export const createDocument = async (req, res) => {
         const ownerId = req.user && req.user.id;
         if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
 
-        const fileHash = computeFileHash(file.buffer);
+    // Salt the file hash with ownerId so identical files uploaded by different users
+    // won't collide in the global hash space. This preserves per-user dedupe behavior.
+    const fileHash = computeFileHash(file.buffer, ownerId);
         const titleHash = computeTitleHmac(title);
 
         const doc = new Document({
