@@ -114,7 +114,7 @@ const DocumentSchema = new Schema(
     folderId: {
       type: Schema.Types.ObjectId,
       ref: "Folder",
-      default: null,
+      default: null, // if null, write "documents" in display or whatever bruh
       index: true,
     },
   },
@@ -129,7 +129,6 @@ DocumentSchema.index({
   tags: "text",
   originalFileName: "text",
 });
-DocumentSchema.index({ uploadDate: -1 });
 DocumentSchema.index({ ocrDate: -1 });
 DocumentSchema.index({ fileType: 1 });
 DocumentSchema.index({ status: 1 });

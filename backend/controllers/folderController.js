@@ -8,12 +8,13 @@ export const createFolder = async (req, res) => {
     const ownerId = req.user && req.user.id;
     if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
 
-    const { name, slug, description, color, parentId, metadata } = req.body;
-    if (!name) return res.status(400).json({ success: false, error: "Folder name is required, bruh, wth" });
+      const { name, slug, description, color, parentId, metadata } = req.body;
+      if (!name) return res.status(400).json({ success: false, error: "Folder name is required" });
 
-  // Ensure name uniqueness per-user (friendly pre-check). The DB unique index is the ultimate guard.
-  const existingByName = await Folder.findOne({ userId: ownerId, name });
-  if (existingByName) return res.status(409).json({ success: false, error: "You already have a folder with that name" });
+      // Ensure case-insensitive name uniqueness per-user using nameLower
+      const nameLower = String(name).toLowerCase().trim();
+      const existingByNameLower = await Folder.findOne({ userId: ownerId, nameLower });
+      if (existingByNameLower) return res.status(409).json({ success: false, error: "You already have a folder with that name" });
 
     // If parentId provided, ensure it's a valid ObjectId and belongs to the same user
     if (parentId) {
@@ -58,15 +59,53 @@ export const listFolders = async (req, res) => {
     const filter = { userId: ownerId };
     if (parentId) filter.parentId = parentId;
 
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize || req.query.limit) || null;
+
     if (minimal && String(minimal) === 'true') {
       // Return lightweight folder list for frontend dropdowns
-      const folders = await Folder.find(filter).select('name slug color parentId').sort({ name: 1 });
-      return res.json({ success: true, data: folders });
+        // If pagination requested, use DB-level skip/limit and compute counts for the page only
+        if (pageSize) {
+          const totalCount = await Folder.countDocuments(filter);
+          const pageFolders = await Folder.find(filter).select('name slug color parentId').sort({ name: 1 }).skip((page - 1) * pageSize).limit(pageSize).lean();
+          const ids = pageFolders.map(f => f._id);
+          const counts = await Document.aggregate([
+            { $match: { folderId: { $in: ids } } },
+            { $group: { _id: '$folderId', count: { $sum: 1 } } }
+          ]);
+          const countsMap = new Map(counts.map(c => [String(c._id), c.count]));
+          const minimalWithCounts = pageFolders.map(f => ({ ...f, documentCount: countsMap.get(String(f._id)) || 0 }));
+          return res.json({ success: true, data: minimalWithCounts, meta: { totalCount, page, pageSize } });
+        }
+
+        // No pagination: return all minimal folders with counts
+        const folders = await Folder.find(filter).select('name slug color parentId').sort({ name: 1 }).lean();
+        const ids = folders.map(f => f._id);
+        const counts = await Document.aggregate([
+          { $match: { folderId: { $in: ids } } },
+          { $group: { _id: '$folderId', count: { $sum: 1 } } }
+        ]);
+        const countsMap = new Map(counts.map(c => [String(c._id), c.count]));
+        const minimalWithCounts = folders.map(f => ({ ...f, documentCount: countsMap.get(String(f._id)) || 0 }));
+        return res.json({ success: true, data: minimalWithCounts });
     }
 
     // Default: return full folder objects with an added document count
+  // Default: return full folder objects with an added document count
+    if (pageSize) {
+      const totalCount = await Folder.countDocuments(filter);
+      const pageFolders = await Folder.find(filter).sort({ name: 1 }).skip((page - 1) * pageSize).limit(pageSize).lean();
+      const ids = pageFolders.map(f => f._id);
+      const counts = await Document.aggregate([
+        { $match: { folderId: { $in: ids } } },
+        { $group: { _id: '$folderId', count: { $sum: 1 } } }
+      ]);
+      const countsMap = new Map(counts.map(c => [String(c._id), c.count]));
+      const enriched = pageFolders.map(f => ({ ...f, documentCount: countsMap.get(String(f._id)) || 0 }));
+      return res.json({ success: true, data: enriched, meta: { totalCount, page, pageSize } });
+    }
+
     const folders = await Folder.find(filter).sort({ name: 1 }).lean();
-    // attach document counts per folder (aggregate in JS to avoid adding complex pipelines here)
     const ids = folders.map(f => f._id);
     const counts = await Document.aggregate([
       { $match: { folderId: { $in: ids } } },
@@ -106,6 +145,16 @@ export const getDocumentsInFolder = async (req, res) => {
     if (folder.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: 'Forbidden' });
 
     // proxy to Document listing by folderId
+    // pagination support
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize || req.query.limit) || null;
+    if (pageSize) {
+      const totalCount = await Document.countDocuments({ userId: ownerId, folderId: id });
+      const skip = (page - 1) * pageSize;
+      const docs = await Document.find({ userId: ownerId, folderId: id }).select('-fileBinaryData').sort({ createdAt: -1 }).skip(skip).limit(pageSize);
+      return res.json({ success: true, data: docs, meta: { totalCount, page, pageSize } });
+    }
+
     const docs = await Document.find({ userId: ownerId, folderId: id }).select('-fileBinaryData').sort({ createdAt: -1 });
     res.json({ success: true, data: docs });
   } catch (err) {
@@ -173,9 +222,10 @@ export const updateFolder = async (req, res) => {
 
     // Prevent setting parent to self
     if (allowed.parentId && allowed.parentId.toString() === id.toString()) return res.status(400).json({ success: false, error: "Folder cannot be its own parent" });
-    // If name is changing, ensure uniqueness for this user
+    // If name is changing, ensure case-insensitive uniqueness for this user
     if (allowed.name && allowed.name !== folder.name) {
-      const exists = await Folder.findOne({ userId: ownerId, name: allowed.name });
+      const newNameLower = String(allowed.name).toLowerCase().trim();
+      const exists = await Folder.findOne({ userId: ownerId, nameLower: newNameLower });
       if (exists) return res.status(409).json({ success: false, error: "Folder name already exists for this user" });
     }
 
@@ -211,9 +261,7 @@ export const deleteFolder = async (req, res) => {
 
     // If force, delete documents and child folders recursively
     if (force) {
-      // delete documents in this folder
-      await Document.deleteMany({ folderId: folder._id });
-      // recursively delete child folders and their documents
+      // recursively delete child folders and their documents (including this folder)
       const stack = [folder._id];
       while (stack.length) {
         const current = stack.pop();

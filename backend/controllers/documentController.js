@@ -8,7 +8,14 @@ import mongoose from "mongoose";
 export const createDocument = async (req, res) => {
     try {
         // Get metadata from req.body and file from req.file
-        const { title, fileType, originalFileName, extractedFields, tags } = req.body;
+        let { title, fileType, originalFileName, extractedFields, tags } = req.body;
+        // When requests come from multipart/form-data, some fields may be JSON strings.
+        if (typeof extractedFields === 'string') {
+            try { extractedFields = JSON.parse(extractedFields); } catch (e) { /* leave as string - validation will catch */ }
+        }
+        if (typeof tags === 'string') {
+            try { tags = JSON.parse(tags); } catch (e) { tags = tags.split(',').map(t => t.trim()).filter(Boolean); }
+        }
         const file = req.file;
 
         if (!file) {
@@ -84,6 +91,11 @@ export const getAllDocuments = async (req, res) => {
                 // Optional filter: folderId (only documents in that folder)
                 const { folderId } = req.query;
                 const filter = { userId: ownerId };
+                // pagination params
+                const page = parseInt(req.query.page) || 1;
+                const pageSize = parseInt(req.query.pageSize || req.query.limit) || null;
+                const skip = pageSize ? (page - 1) * pageSize : null;
+
                 if (folderId) {
                     if (!mongoose.Types.ObjectId.isValid(folderId)) return res.status(400).json({ success: false, error: "Invalid folderId" });
                     // Ensure folder belongs to user
@@ -93,9 +105,15 @@ export const getAllDocuments = async (req, res) => {
                     filter.folderId = folderId;
                 }
 
-                // find documents for this user and sort by newest->oldest
-                // exclude binary data from the listing response to save bandwidth/memory
-                const docs = await Document.find(filter).select('-fileBinaryData').sort({ uploadDate: -1 });
+                // Apply pagination when requested
+                if (pageSize) {
+                    const totalCount = await Document.countDocuments(filter);
+                    const docs = await Document.find(filter).select('-fileBinaryData').sort({ createdAt: -1 }).skip(skip).limit(pageSize);
+                    return res.json({ success: true, data: docs, meta: { totalCount, page, pageSize } });
+                }
+
+                // Default: return full list (unpaginated)
+                const docs = await Document.find(filter).select('-fileBinaryData').sort({ createdAt: -1 });
         res.json({ success: true, data: docs });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
