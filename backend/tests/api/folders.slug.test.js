@@ -9,7 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const baseUrl = 'http://localhost:4000';
-const devUser = process.env.DEV_CURRENT_USER_ID || '650000000000000000000001';
+// Always send X-Dev-User-Id header for tests (works in CI without .env)
+const TEST_USER_ID = '650000000000000000000001';
 
 // Helper to create a unique tiny PNG file for each test
 function createUniquePNG() {
@@ -61,7 +62,7 @@ describe('Folders + Slugs API', function() {
   it('GET /api/folders/slug/:slug/documents should return documents in folder by slug', async () => {
     // create folder
     const uniqueName = 'slugTestFolder-' + Date.now();
-    const create = await request(baseUrl).post('/api/folders').set('X-Dev-User-Id', devUser).send({ name: uniqueName });
+    const create = await request(baseUrl).post('/api/folders').set('X-Dev-User-Id', TEST_USER_ID).send({ name: uniqueName });
     assert.strictEqual(create.status, 201, `Expected 201 but got ${create.status}: ${JSON.stringify(create.body)}`);
     assert.ok(create.body.data && create.body.data._id, 'Folder response should include data._id');
     const folder = create.body.data;
@@ -69,7 +70,7 @@ describe('Folders + Slugs API', function() {
     // upload a document into the folder
     const upload = await request(baseUrl)
       .post('/api/documents')
-      .set('X-Dev-User-Id', devUser)
+      .set('X-Dev-User-Id', TEST_USER_ID)
       .field('title', 'slug-test-doc-' + Date.now())
       .field('extractedFields', JSON.stringify({ foo: 'bar' }))
       .field('folderId', folder._id)
@@ -78,7 +79,7 @@ describe('Folders + Slugs API', function() {
     const docId = upload.body.id || upload.body.data?._id || upload.body.data?.id;
 
     // call the slug endpoint
-    const res = await request(baseUrl).get(`/api/folders/slug/${folder.slug}/documents`).set('X-Dev-User-Id', devUser);
+    const res = await request(baseUrl).get(`/api/folders/slug/${folder.slug}/documents`).set('X-Dev-User-Id', TEST_USER_ID);
     assert.strictEqual(res.status, 200);
     assert.ok(Array.isArray(res.body.data));
     const found = res.body.data.find(d => d._id === (docId || upload.body.data._id));
@@ -86,9 +87,9 @@ describe('Folders + Slugs API', function() {
 
     // cleanup - delete document first, then folder
     if (docId) {
-      await request(baseUrl).delete(`/api/documents/${docId}`).set('X-Dev-User-Id', devUser);
+      await request(baseUrl).delete(`/api/documents/${docId}`).set('X-Dev-User-Id', TEST_USER_ID);
     }
-    await request(baseUrl).delete(`/api/folders/${folder._id}?force=true`).set('X-Dev-User-Id', devUser);
+    await request(baseUrl).delete(`/api/folders/${folder._id}?force=true`).set('X-Dev-User-Id', TEST_USER_ID);
   });
 
 });

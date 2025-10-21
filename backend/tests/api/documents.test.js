@@ -9,7 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const baseUrl = 'http://localhost:4000';
-const devUser = process.env.DEV_CURRENT_USER_ID || '650000000000000000000001';
+// Always send X-Dev-User-Id header for tests (works in CI without .env)
+const TEST_USER_ID = '650000000000000000000001';
 
 // Helper to create a unique tiny PNG file for each test
 function createUniquePNG() {
@@ -61,14 +62,14 @@ describe('Documents API (multipart upload)', function() {
   it('POST /api/documents should accept multipart file upload and set folderId', async () => {
     // create a folder first
     const uniqueName = 'uploadTestFolder-' + Date.now();
-    const folderRes = await request(baseUrl).post('/api/folders').set('X-Dev-User-Id', devUser).send({ name: uniqueName });
+    const folderRes = await request(baseUrl).post('/api/folders').set('X-Dev-User-Id', TEST_USER_ID).send({ name: uniqueName });
     assert.strictEqual(folderRes.status, 201, `Expected 201 but got ${folderRes.status}: ${JSON.stringify(folderRes.body)}`);
     assert.ok(folderRes.body.data && folderRes.body.data._id, 'Folder response should include data._id');
     const folderId = folderRes.body.data._id;
 
     const res = await request(baseUrl)
       .post('/api/documents')
-      .set('X-Dev-User-Id', devUser)
+      .set('X-Dev-User-Id', TEST_USER_ID)
       .field('title', 'upload-test-doc-' + Date.now())
       .field('extractedFields', JSON.stringify({ foo: 'bar' }))
       .attach('file', testImagePath)
@@ -80,8 +81,8 @@ describe('Documents API (multipart upload)', function() {
 
     // cleanup - delete document first, then folder
     if (docId) {
-      await request(baseUrl).delete(`/api/documents/${docId}`).set('X-Dev-User-Id', devUser);
+      await request(baseUrl).delete(`/api/documents/${docId}`).set('X-Dev-User-Id', TEST_USER_ID);
     }
-    await request(baseUrl).delete(`/api/folders/${folderId}?force=true`).set('X-Dev-User-Id', devUser);
+    await request(baseUrl).delete(`/api/folders/${folderId}?force=true`).set('X-Dev-User-Id', TEST_USER_ID);
   });
 });

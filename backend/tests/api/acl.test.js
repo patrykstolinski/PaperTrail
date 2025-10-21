@@ -6,8 +6,8 @@ import Document from '../../models/Document.js';
 import Folder from '../../models/Folder.js';
 
 const baseUrl = 'http://localhost:4000';
-// Authenticate as this user when making requests
-const TEST_USER = process.env.DEV_CURRENT_USER_ID || '650000000000000000000001';
+// Authenticate as this user when making requests (always send header, works in CI)
+const TEST_USER_ID = '650000000000000000000001';
 // Create resources owned by a DIFFERENT user to test cross-user access protection
 const OTHER_USER = '6500000000000000000000ff';
 
@@ -74,7 +74,7 @@ describe('ACL / Auth - cross-user access', function () {
   it('prevents server dev user from fetching a document owned by another user', async function () {
     const res = await request(baseUrl)
       .get(`/api/documents/${docId}`)
-      .set('X-Dev-User-Id', TEST_USER)
+      .set('X-Dev-User-Id', TEST_USER_ID)
       .set('Accept', 'application/json');
 
     assert.strictEqual(res.status, 403);
@@ -83,14 +83,14 @@ describe('ACL / Auth - cross-user access', function () {
   it('prevents server dev user from deleting a document owned by another user', async function () {
     const res = await request(baseUrl)
       .delete(`/api/documents/${docId}`)
-      .set('X-Dev-User-Id', TEST_USER);
+      .set('X-Dev-User-Id', TEST_USER_ID);
     assert.strictEqual(res.status, 403);
   });
 
   it('prevents server dev user from updating a document owned by another user', async function () {
     const res = await request(baseUrl)
       .put(`/api/documents/${docId}`)
-      .set('X-Dev-User-Id', TEST_USER)
+      .set('X-Dev-User-Id', TEST_USER_ID)
       .send({ title: 'Hacked' });
     // some controllers return 404 for non-existent / not-owned; accept 403 or 404 as valid protection
     assert.ok(res.status === 403 || res.status === 404);
@@ -99,14 +99,14 @@ describe('ACL / Auth - cross-user access', function () {
   it('prevents server dev user from fetching a folder owned by another user', async function () {
     const res = await request(baseUrl)
       .get(`/api/folders/${folderId}`)
-      .set('X-Dev-User-Id', TEST_USER);
+      .set('X-Dev-User-Id', TEST_USER_ID);
     assert.strictEqual(res.status, 403);
   });
 
   it('prevents server dev user from deleting a folder owned by another user', async function () {
     const res = await request(baseUrl)
       .delete(`/api/folders/${folderId}`)
-      .set('X-Dev-User-Id', TEST_USER);
+      .set('X-Dev-User-Id', TEST_USER_ID);
     assert.strictEqual(res.status, 403);
   });
 });
