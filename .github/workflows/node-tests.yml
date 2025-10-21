@@ -27,6 +27,7 @@ jobs:
       MONGO_HOST: localhost
       MONGO_PORT: 27017
       MONGO_DB: papertrail_test
+      PORT: 4000
       NODE_ENV: development
       DEV_AUTH: 'true'
 
@@ -42,6 +43,11 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify MongoDB is ready
+        run: |
+          echo "Checking MongoDB connection..."
+          mongosh --eval "db.adminCommand('ping')" mongodb://root:example@localhost:27017/admin || exit 1
 
       - name: Start backend server
         run: |
@@ -64,7 +70,13 @@ jobs:
           exit 1
 
       - name: Run tests
-        run: npm test --silent
+        run: npm test
+
+      - name: Show server logs on failure
+        if: failure()
+        run: |
+          echo "=== Server Logs ==="
+          cat server.log || echo "No server.log found"
 
       - name: Upload server logs on failure
         if: failure()

@@ -34,7 +34,7 @@ A browser-first platform that lets people aggregate, organize, and manage all li
 - MONGO_PORT=27017
 - MONGO_HOST=host.docker.internal
 - PORT=4000
-
+## Not updated
 ```bash
 **2. npm install**  
 **3. docker compose up -d**  
