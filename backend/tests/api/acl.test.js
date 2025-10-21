@@ -8,7 +8,7 @@ import Folder from '../../models/Folder.js';
 const baseUrl = 'http://localhost:4000';
 // Server likely enforces a dev user via DEV_CURRENT_USER_ID; detect it
 const serverDevUser = process.env.DEV_CURRENT_USER_ID || '6500000000000000000000dd';
-// We'll create resources owned by OTHER_USER so that requests from the server's dev user are rejected
+// create resources owned by OTHER_USER so that requests from the server's dev user are rejected
 const OTHER_USER = '6500000000000000000000ff';
 
 describe('ACL / Auth - cross-user access', function () {
