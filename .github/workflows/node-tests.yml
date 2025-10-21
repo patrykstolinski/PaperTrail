@@ -44,11 +44,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify MongoDB is ready
-        run: |
-          echo "Checking MongoDB connection..."
-          mongosh --eval "db.adminCommand('ping')" mongodb://root:example@localhost:27017/admin || exit 1
-
       - name: Start backend server
         run: |
           nohup node server.js > server.log 2>&1 & echo $! > server.pid
