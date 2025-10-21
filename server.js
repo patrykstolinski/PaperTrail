@@ -40,6 +40,19 @@ app.use(morgan("dev"));
 //------------------ Get MongoDB connection info from .env
 const { MONGO_USER, MONGO_PASS, MONGO_DB, MONGO_PORT, MONGO_HOST, PORT } = process.env;
 
+// Validate required Mongo environment variables early and fail fast with a clear message
+const missing = [];
+if (!MONGO_HOST) missing.push('MONGO_HOST');
+if (!MONGO_PORT) missing.push('MONGO_PORT');
+if (!MONGO_DB) missing.push('MONGO_DB');
+if (!MONGO_USER) missing.push('MONGO_USER');
+if (!MONGO_PASS) missing.push('MONGO_PASS');
+if (missing.length) {
+    console.error('Missing required Mongo environment variables:', missing.join(', '));
+    console.error('Please set these in your .env or CI environment. Example keys: MONGO_HOST, MONGO_PORT, MONGO_DB, MONGO_USER, MONGO_PASS');
+    process.exit(1);
+}
+
 //------------------ Connect to MongoDB
 const mongoURI = `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=admin`;
 
