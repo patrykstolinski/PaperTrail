@@ -116,11 +116,6 @@ FolderSchema.pre("validate", function (next) {
 // - unique slug per user for stable routing and to prevent collisions
 // Unique slug per user for stable routing and to prevent collisions
 FolderSchema.index({ userId: 1, slug: 1 }, { unique: true, name: "unique_folder_slug_per_user" });
-// Unique folder name per user (controller also checks to give friendlier errors).
-// Note: this index is case-sensitive by default; if you need case-insensitive
-// uniqueness consider migrating to a normalized field (nameLower) with a
-// collation or using a plugin. For now we enforce exact-name uniqueness.
-FolderSchema.index({ userId: 1, name: 1 }, { unique: true, name: "unique_folder_name_per_user" });
 // Case-insensitive uniqueness via normalized nameLower
 FolderSchema.index({ userId: 1, nameLower: 1 }, { unique: true, name: "unique_folder_nameLower_per_user" });
 // - help listing children or folders by name
