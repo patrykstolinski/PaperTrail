@@ -20,20 +20,25 @@ describe('Folders API (smoke)', function() {
   });
 
   it('POST /api/folders should create a folder', async () => {
+    const uniqueName = 'testFolderForAPI-' + Date.now();
     const res = await request(baseUrl)
       .post('/api/folders')
       .set('X-Dev-User-Id', devUser)
-      .send({ name: 'testFolderForAPI', description: 'mocha test' });
+      .send({ name: uniqueName, description: 'mocha test' });
     assert.strictEqual(res.status, 201);
     assert.ok(res.body.data && res.body.data._id);
     createdFolderId = res.body.data._id;
   });
 
   it('POST duplicate folder name should return 409', async () => {
+    // Get the folder we just created to reuse its exact name
+    const getFolder = await request(baseUrl).get(`/api/folders/${createdFolderId}`).set('X-Dev-User-Id', devUser);
+    const existingName = getFolder.body.data.name;
+    
     const res = await request(baseUrl)
       .post('/api/folders')
       .set('X-Dev-User-Id', devUser)
-      .send({ name: 'testFolderForAPI', description: 'duplicate test' });
+      .send({ name: existingName, description: 'duplicate test' });
     assert.strictEqual(res.status, 409);
   });
 
@@ -74,8 +79,9 @@ describe('Folders API (smoke)', function() {
   });
 
   it('Nested folder delete without force should refuse (400)', async () => {
-    // create child folder
-    const createChild = await request(baseUrl).post('/api/folders').set('X-Dev-User-Id', devUser).send({ name: 'childFolder', parentId: createdFolderId });
+    // create child folder with unique name
+    const childName = 'childFolder-' + Date.now();
+    const createChild = await request(baseUrl).post('/api/folders').set('X-Dev-User-Id', devUser).send({ name: childName, parentId: createdFolderId });
     assert.strictEqual(createChild.status, 201);
     const childId = createChild.body.data._id;
 

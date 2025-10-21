@@ -6,9 +6,9 @@ import Document from '../../models/Document.js';
 import Folder from '../../models/Folder.js';
 
 const baseUrl = 'http://localhost:4000';
-// Server likely enforces a dev user via DEV_CURRENT_USER_ID; detect it
-const serverDevUser = process.env.DEV_CURRENT_USER_ID || '6500000000000000000000dd';
-// create resources owned by OTHER_USER so that requests from the server's dev user are rejected
+// Authenticate as this user when making requests
+const TEST_USER = process.env.DEV_CURRENT_USER_ID || '650000000000000000000001';
+// Create resources owned by a DIFFERENT user to test cross-user access protection
 const OTHER_USER = '6500000000000000000000ff';
 
 describe('ACL / Auth - cross-user access', function () {
@@ -31,24 +31,25 @@ describe('ACL / Auth - cross-user access', function () {
       await mongoose.connect(mongoUri, { dbName: process.env.MONGO_DB || undefined });
     }
 
+    const timestamp = Date.now();
     const folder = new Folder({
       userId: new mongoose.Types.ObjectId(OTHER_USER),
-      name: 'acl-folder-test-' + Date.now(),
-      nameLower: 'acl-folder-test',
-      slug: 'acl-folder-test-' + Date.now(),
+      name: 'acl-folder-test-' + timestamp,
+      nameLower: ('acl-folder-test-' + timestamp).toLowerCase(),
+      slug: 'acl-folder-test-' + timestamp,
     });
     await folder.save();
     folderId = folder._id.toString();
 
     const doc = new Document({
       userId: new mongoose.Types.ObjectId(OTHER_USER),
-      title: 'ACL Test Doc',
+      title: 'ACL Test Doc ' + timestamp,
       originalFileName: 'acl.pdf',
       fileType: 'application/pdf',
       fileSize: 1,
       fileBinaryData: Buffer.from('x'),
-      fileHash: 'hash-acl',
-      titleHash: 'thash-acl',
+      fileHash: 'hash-acl-' + timestamp,
+      titleHash: 'thash-acl-' + timestamp,
       folderId: new mongoose.Types.ObjectId(folderId),
     });
     await doc.save();
@@ -56,14 +57,14 @@ describe('ACL / Auth - cross-user access', function () {
   });
 
   after(async function () {
-    // cleanup created resources (ignore errors like auth failures to avoid noisy test failures)
+    // cleanup created resources - delete by IDs to ensure we only remove our test data
     try {
-      await Document.deleteMany({ title: 'ACL Test Doc' });
+      if (docId) await Document.findByIdAndDelete(docId);
     } catch (err) {
       // ignore
     }
     try {
-      await Folder.deleteMany({ slug: /acl-folder-test/ });
+      if (folderId) await Folder.findByIdAndDelete(folderId);
     } catch (err) {
       // ignore
     }
@@ -73,29 +74,39 @@ describe('ACL / Auth - cross-user access', function () {
   it('prevents server dev user from fetching a document owned by another user', async function () {
     const res = await request(baseUrl)
       .get(`/api/documents/${docId}`)
+      .set('X-Dev-User-Id', TEST_USER)
       .set('Accept', 'application/json');
 
     assert.strictEqual(res.status, 403);
   });
 
   it('prevents server dev user from deleting a document owned by another user', async function () {
-    const res = await request(baseUrl).delete(`/api/documents/${docId}`);
+    const res = await request(baseUrl)
+      .delete(`/api/documents/${docId}`)
+      .set('X-Dev-User-Id', TEST_USER);
     assert.strictEqual(res.status, 403);
   });
 
   it('prevents server dev user from updating a document owned by another user', async function () {
-    const res = await request(baseUrl).put(`/api/documents/${docId}`).send({ title: 'Hacked' });
+    const res = await request(baseUrl)
+      .put(`/api/documents/${docId}`)
+      .set('X-Dev-User-Id', TEST_USER)
+      .send({ title: 'Hacked' });
     // some controllers return 404 for non-existent / not-owned; accept 403 or 404 as valid protection
     assert.ok(res.status === 403 || res.status === 404);
   });
 
   it('prevents server dev user from fetching a folder owned by another user', async function () {
-    const res = await request(baseUrl).get(`/api/folders/${folderId}`);
+    const res = await request(baseUrl)
+      .get(`/api/folders/${folderId}`)
+      .set('X-Dev-User-Id', TEST_USER);
     assert.strictEqual(res.status, 403);
   });
 
   it('prevents server dev user from deleting a folder owned by another user', async function () {
-    const res = await request(baseUrl).delete(`/api/folders/${folderId}`);
+    const res = await request(baseUrl)
+      .delete(`/api/folders/${folderId}`)
+      .set('X-Dev-User-Id', TEST_USER);
     assert.strictEqual(res.status, 403);
   });
 });
