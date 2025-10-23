@@ -1,8 +1,8 @@
-name: Backend tests
+name: Backend tests (manual)
 
+# NOTE: Temporarily disabled automatic triggers - fucking poppler does not run on linux
 on:
-  push:
-  pull_request:
+  workflow_dispatch: {}
 
 jobs:
   backend-tests:
@@ -30,6 +30,8 @@ jobs:
       PORT: 4000
       NODE_ENV: development
       DEV_AUTH: 'true'
+      JWT_SECRET: 'test-jwt-secret-for-ci'
+      HMAC_SECRET: 'test-hmac-secret-for-ci'
 
     steps:
       - name: Checkout
@@ -44,9 +46,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild Sharp for Linux
+        run: npm rebuild sharp
+
       - name: Start backend server
         run: |
-          nohup node server.js > server.log 2>&1 & echo $! > server.pid
+          echo "Starting backend server..."
+          node server.js > server.log 2>&1 &
+          echo $! > server.pid
+          echo "Server PID: $(cat server.pid)"
+          sleep 3
+          if ! ps -p $(cat server.pid) > /dev/null; then
+            echo "ERROR: Server process died immediately after starting!"
+            echo "=== Server Logs ==="
+            cat server.log
+            exit 1
+          fi
+          echo "Server process is running"
 
       - name: Wait for server to be healthy
         run: |
@@ -57,11 +73,14 @@ jobs:
               echo "Server healthy"
               exit 0
             fi
-            echo "Not ready yet (status=$status). Retrying..."
+            echo "Not ready yet (attempt $i/30, status=$status). Retrying..."
             sleep 2
           done
-          echo "Server did not become healthy. Dumping server.log"
-          tail -n +1 server.log || true
+          echo "Server did not become healthy after 60 seconds"
+          echo "=== Server Logs ==="
+          cat server.log || echo "No server.log found"
+          echo "=== Server Process ==="
+          ps -p $(cat server.pid) || echo "Server process not running"
           exit 1
 
       - name: Run tests
