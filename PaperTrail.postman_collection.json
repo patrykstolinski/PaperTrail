@@ -63,7 +63,14 @@
 					"type": "noauth"
 				},
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "X-Dev-User-Id",
+						"value": "68f623fd26f422d8b00a14e2",
+						"type": "text",
+						"disabled": true
+					}
+				],
 				"body": {
 					"mode": "raw",
 					"raw": "",
@@ -155,7 +162,14 @@
 					"type": "noauth"
 				},
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "X-Dev-User-Id",
+						"value": "650000000000000000000001",
+						"type": "text",
+						"disabled": true
+					}
+				],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}"
@@ -175,13 +189,36 @@
 			"response": []
 		},
 		{
+			"name": "Document FILE by ID",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/documents/{{documentId}}/download",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"documents",
+						"{{documentId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Update a document",
 			"request": {
 				"method": "PUT",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"title\": \"Updateddd Test Invoice 2025-10\",\r\n  \"tags\": [\"invoice\",\"updated\"]\r\n}",
+					"raw": "{\r\n\"folderId\": \"68f643c6073172fcab4bf1e2\"\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -412,15 +449,39 @@
 					"type": "noauth"
 				},
 				"method": "POST",
-				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2030-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_march_2030.pdf\",\r\n  \"fileBinaryData\": \"UERGGSSSSSSS\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
+				"header": [
+					{
+						"key": "X-Dev-User-Id",
+						"value": "650000000000000000000001",
+						"type": "text",
+						"disabled": true
 					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/C:/Users/patry/Downloads/Screenshot_2025-10-09_171301.png"
+						},
+						{
+							"key": "title",
+							"value": "Andreas Screenshot",
+							"type": "text"
+						},
+						{
+							"key": "tags",
+							"value": "Frontend, Screenshot",
+							"type": "text"
+						},
+						{
+							"key": "extractedFields",
+							"value": "\"testKey: testValue\"",
+							"type": "text",
+							"disabled": true
+						}
+					]
 				},
 				"url": {
 					"raw": "{{base_url}}/api/documents",
@@ -567,38 +628,13 @@
 			]
 		},
 		{
-			"name": "create a test document (duplicate file)",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status is 200 or 201\", () => {\r",
-							"  pm.response.to.have.status.oneOf([200, 201]);\r",
-							"});\r",
-							"pm.test(\"Document created successfully\", () => {\r",
-							"  const res = pm.response.json();\r",
-							"  pm.expect(res.success).to.be.true;\r",
-							"  pm.expect(res.data._id).to.exist;\r",
-							"  pm.collectionVariables.set(\"docId\", res.data._id);\r",
-							"});\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
+			"name": "NEW folder (userId from .env)",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
 				"method": "POST",
 				"header": [],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGGGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
+					"raw": "{\r\n\"name\": \"FolderBruh\",\r\n\"description\": \"Folder created from Postman\",\r\n\"parentId\": null\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -606,201 +642,97 @@
 					}
 				},
 				"url": {
-					"raw": "{{base_url}}/api/documents",
+					"raw": "{{base_url}}/api/folders/",
 					"host": [
 						"{{base_url}}"
 					],
 					"path": [
 						"api",
-						"documents"
+						"folders",
+						""
 					]
 				}
 			},
-			"response": [
-				{
-					"name": "Duplicated file",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2025-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/documents",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"documents"
-							]
-						}
-					},
-					"status": "Conflict",
-					"code": 409,
-					"_postman_previewlanguage": null,
-					"header": [
-						{
-							"key": "X-Powered-By",
-							"value": "Express"
-						},
-						{
-							"key": "Access-Control-Allow-Origin",
-							"value": "*"
-						},
-						{
-							"key": "Content-Type",
-							"value": "application/json; charset=utf-8"
-						},
-						{
-							"key": "Content-Length",
-							"value": "80"
-						},
-						{
-							"key": "ETag",
-							"value": "W/\"50-fTQ04j/oS0kbUxq5ZLr7bJB4kfA\""
-						},
-						{
-							"key": "Date",
-							"value": "Thu, 09 Oct 2025 11:44:00 GMT"
-						},
-						{
-							"key": "Connection",
-							"value": "keep-alive"
-						},
-						{
-							"key": "Keep-Alive",
-							"value": "timeout=5"
-						}
-					],
-					"cookie": [],
-					"body": "{\n    \"success\": false,\n    \"error\": \"Duplicate file: You have already uploaded this file.\"\n}"
-				}
-			]
+			"response": []
 		},
 		{
-			"name": "create a test document (duplicate title)",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status is 200 or 201\", () => {\r",
-							"  pm.response.to.have.status.oneOf([200, 201]);\r",
-							"});\r",
-							"pm.test(\"Document created successfully\", () => {\r",
-							"  const res = pm.response.json();\r",
-							"  pm.expect(res.success).to.be.true;\r",
-							"  pm.expect(res.data._id).to.exist;\r",
-							"  pm.collectionVariables.set(\"docId\", res.data._id);\r",
-							"});\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {},
-						"requests": {}
-					}
-				}
-			],
+			"name": "ALL Folder (per user from .env)",
 			"request": {
-				"auth": {
-					"type": "noauth"
-				},
-				"method": "POST",
+				"method": "GET",
 				"header": [],
-				"body": {
-					"mode": "raw",
-					"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
 				"url": {
-					"raw": "{{base_url}}/api/documents",
+					"raw": "{{base_url}}/api/folders/",
 					"host": [
 						"{{base_url}}"
 					],
 					"path": [
 						"api",
+						"folders",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Folder by ID",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/folders/{{folderId}}/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"folders",
+						"{{folderId}}",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Folder by Slug",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/folders/slug/{{folderName}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"folders",
+						"slug",
+						"{{folderName}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET Docs in Folder",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/folders/{{folderId}}/documents",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"folders",
+						"{{folderId}}",
 						"documents"
 					]
 				}
 			},
-			"response": [
-				{
-					"name": "create a test document (duplicate title)",
-					"originalRequest": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"userId\": \"{{testUserId}}\",\r\n  \"title\": \"Test Invoice 2026-10\",\r\n  \"fileType\": \"pdf\",\r\n  \"originalFileName\": \"invoice_oct_2025.pdf\",\r\n  \"fileBinaryData\": \"UERGGG\",\r\n  \"tags\": [\"test\",\"invoice\"],\r\n  \"extractedFields\": {\"Kundennummer\":\"123\",\"Gesamtsumme\":\"99.99\"}\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/documents",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"documents"
-							]
-						}
-					},
-					"status": "Conflict",
-					"code": 409,
-					"_postman_previewlanguage": "",
-					"header": [
-						{
-							"key": "X-Powered-By",
-							"value": "Express"
-						},
-						{
-							"key": "Access-Control-Allow-Origin",
-							"value": "*"
-						},
-						{
-							"key": "Content-Type",
-							"value": "application/json; charset=utf-8"
-						},
-						{
-							"key": "Content-Length",
-							"value": "98"
-						},
-						{
-							"key": "ETag",
-							"value": "W/\"62-uBCq+N9MJYRyWfcaVW5X/9GKsFo\""
-						},
-						{
-							"key": "Date",
-							"value": "Thu, 09 Oct 2025 11:45:58 GMT"
-						},
-						{
-							"key": "Connection",
-							"value": "keep-alive"
-						},
-						{
-							"key": "Keep-Alive",
-							"value": "timeout=5"
-						}
-					],
-					"cookie": [],
-					"body": "{\n    \"success\": false,\n    \"error\": \"Duplicate title: You have already uploaded a document with this title.\"\n}"
-				}
-			]
+			"response": []
 		}
 	],
 	"event": [
@@ -830,7 +762,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": ""
+			"value": "http://localhost:4000"
 		},
 		{
 			"key": "documentId",
@@ -842,11 +774,14 @@
 		},
 		{
 			"key": "testUserId",
-			"value": "",
-			"type": "default"
+			"value": ""
 		},
 		{
-			"key": "docId",
+			"key": "folderId",
+			"value": ""
+		},
+		{
+			"key": "folderName",
 			"value": ""
 		}
 	]

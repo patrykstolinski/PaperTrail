@@ -1,5 +1,6 @@
 .github/daily-summaries/
 .github/copilot-instructions.md
+.github/Analysis
 # Logs
 logs
 *.log
