@@ -15,6 +15,38 @@ const ExtractedFieldsSchema = new Schema(
         strict: false, // allow completely arbitrary fields
     }
 );
+
+/**
+ * Subschema: Per-page metadata for multi-page documents
+ * - Stores metadata for each page of a multi-page PDF or image sequence
+ * - thumbnailGridFS: ObjectId reference to GridFS file for page thumbnail
+ * - extractedFields: Per-page OCR data (same flexible schema as document-level)
+ * - ocrText: Full text extracted from this page via OCR
+ */
+const PageMetadataSchema = new Schema(
+    {
+        pageNumber: {
+            type: Number,
+            required: true,
+        },
+        thumbnailGridFS: {
+            type: Schema.Types.ObjectId,
+            // Reference to GridFS file in 'thumbnails' bucket
+        },
+        extractedFields: {
+            type: ExtractedFieldsSchema,
+            default: {},
+        },
+        ocrText: {
+            type: String,
+            // Full text content of this page for searching
+        },
+    },
+    {
+        _id: false, // Don't create separate _id for each page subdocument
+    }
+);
+
 const DocumentSchema = new Schema(
 {
     // ------ Required fields ------
@@ -116,6 +148,14 @@ const DocumentSchema = new Schema(
       ref: "Folder",
       default: null, // if null, write "documents" in display or whatever bruh
       index: true,
+    },
+
+    // ------ Multi-page support ------
+    // Array of per-page metadata for multi-page documents (PDFs with multiple pages)
+    // For single-page documents (images), this array will be empty or have 1 entry
+    pages: {
+      type: [PageMetadataSchema],
+      default: [],
     },
   },
   {

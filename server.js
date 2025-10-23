@@ -5,6 +5,7 @@ import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import { GridFSBucket } from "mongodb";
 
 //------------------ import routes
 import documentRoutes from "./backend/routes/documents.js";
@@ -56,13 +57,25 @@ if (missing.length) {
 //------------------ Connect to MongoDB
 const mongoURI = `mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGO_HOST}:${MONGO_PORT}/${MONGO_DB}?authSource=admin`;
 
+// GridFS bucket for storing thumbnails
+let gridFSBucket;
+
 try {
     await mongoose.connect(mongoURI);
     console.log("Connected to MongoDB. Nice.");
+    
+    // Initialize GridFS bucket after connection
+    gridFSBucket = new GridFSBucket(mongoose.connection.db, {
+        bucketName: 'thumbnails'
+    });
+    console.log("GridFS bucket 'thumbnails' initialized.");
 } catch (err) {
     console.error("Bruh, MongoDB connection error:", err);
     process.exit(1);
 }
+
+// Export gridFSBucket for use in controllers
+export { gridFSBucket };
 //------------------ helper Routes 
 // healthcheck
 app.get("/health", (req, res) => {

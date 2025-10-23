@@ -2,7 +2,7 @@ import jwt from "jsonwebtoken";
 
 //  JWT auth middleware with a developer fallback.
 // - In production: requires Authorization: Bearer <token> and JWT_SECRET env var.
-// - In development: if DEV_AUTH=true you can set X-Dev-User-Id/DEV_CURRENT_USER_ID header to simulate a user.
+// - In development: if DEV_AUTH=true you can set X-Dev-User-Id/DEV_CURRENT_USER_ID header or devUserId query param to simulate a user.
 const auth = (req, res, next) => {
   const devAuth = process.env.DEV_AUTH === "true" || process.env.NODE_ENV === "development";
 
@@ -18,6 +18,13 @@ const auth = (req, res, next) => {
     const devUserHeader = req.get("X-Dev-User-Id");
     if (devUserHeader) {
       req.user = { id: devUserHeader };
+      return next();
+    }
+
+    // Check query parameter for img src requests (dev mode only)
+    const devUserQuery = req.query.devUserId;
+    if (devUserQuery) {
+      req.user = { id: devUserQuery };
       return next();
     }
 

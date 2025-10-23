@@ -1,11 +1,20 @@
 import express from "express";
 
 // import functions to do stuff to the document
-import { createDocument, getAllDocuments, getDocumentById, updateDocument, deleteDocument, downloadDocumentFile } from "../controllers/documentController.js";
+import { 
+    createDocument, 
+    getAllDocuments, 
+    getDocumentById, 
+    updateDocument, 
+    deleteDocument, 
+    downloadDocumentFile,
+    getDocumentPages,
+    getPageThumbnail
+} from "../controllers/documentController.js";
 
 
 //------------------ Import Middleware
-import upload from "../middleware/upload.js";
+import upload, { flexibleUpload } from "../middleware/upload.js";
 import { validateObjectId } from "../middleware/validateObjectId.js";
 import { validateRequiredFields } from "../middleware/validateRequiredFields.js";
 import auth from "../middleware/auth.js";
@@ -17,7 +26,7 @@ const router = express.Router();
 router.post(
 	"/",
 	auth,
-	upload.single("file"),
+	flexibleUpload, // Support both "file" (singular) and "files" (plural)
 	validateRequiredFields(["title"]), // userId is set from req.user
 	createDocument
 );
@@ -30,6 +39,12 @@ router.get("/:id", auth, validateObjectId, getDocumentById);
 
 //GET /api/documents/:id/download
 router.get("/:id/download", auth, validateObjectId, downloadDocumentFile);
+
+//GET /api/documents/:id/pages
+router.get("/:id/pages", auth, validateObjectId, getDocumentPages);
+
+//GET /api/documents/:id/pages/:pageNum/thumbnail
+router.get("/:id/pages/:pageNum/thumbnail", auth, validateObjectId, getPageThumbnail);
 
 //PUT /api/documents/:id
 router.put("/:id", auth, validateObjectId, updateDocument);

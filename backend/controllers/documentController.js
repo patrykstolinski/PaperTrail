@@ -2,13 +2,21 @@ import Document from "../models/Document.js";
 import Folder from "../models/Folder.js";
 import { computeFileHash, computeTitleHmac } from "../utils/hashHelpers.js";
 import mongoose from "mongoose";
+import { PDFDocument } from "pdf-lib";
+import sharp from "sharp";
+import { gridFSBucket } from "../../server.js";
+import { convert } from "pdf-poppler";
+import fs from "fs";
+import path from "path";
+import os from "os";
 
 // CREATE a new Document 
 
 export const createDocument = async (req, res) => {
     try {
-        // Get metadata from req.body and file from req.file
+        // Get metadata from req.body and file(s) from req.files
         let { title, fileType, originalFileName, extractedFields, tags } = req.body;
+        
         // When requests come from multipart/form-data, some fields may be JSON strings.
         if (typeof extractedFields === 'string') {
             try { extractedFields = JSON.parse(extractedFields); } catch (e) { /* leave as string - validation will catch */ }
@@ -16,54 +24,89 @@ export const createDocument = async (req, res) => {
         if (typeof tags === 'string') {
             try { tags = JSON.parse(tags); } catch (e) { tags = tags.split(',').map(t => t.trim()).filter(Boolean); }
         }
-        const file = req.file;
-
-        if (!file) {
+        
+        // multer.any() always puts files in req.files array (regardless of field name)
+        const files = req.files || [];
+        
+        if (files.length === 0) {
             return res.status(400).json({ success: false, error: "No file uploaded." });
         }
-
-        // Log file details before saving
-        console.log('File details:', {
-            originalSize: file.size,
-            bufferSize: file.buffer.length,
-            mimetype: file.mimetype,
-            originalName: file.originalname
-        });
 
         // enforce ownership from authenticated user
         const ownerId = req.user && req.user.id;
         if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
 
-    // Salt the file hash with ownerId so identical files uploaded by different users
-    // won't collide in the global hash space. This preserves per-user dedupe behavior.
-                // If a folderId was provided, validate it belongs to the owner and fetch name for legacy `folder` field.
-                let resolvedFolderName = undefined;
-                let folderIdVal = req.body && req.body.folderId;
-                if (folderIdVal) {
-                    if (!mongoose.Types.ObjectId.isValid(folderIdVal)) return res.status(400).json({ success: false, error: "Invalid folderId" });
-                    const folderDoc = await Folder.findById(folderIdVal);
-                    if (!folderDoc) return res.status(400).json({ success: false, error: "Folder not found" });
-                    if (folderDoc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Folder not owned by you" });
-                    resolvedFolderName = folderDoc.name;
-                }
+        // If a folderId was provided, validate it belongs to the owner
+        let folderIdVal = req.body && req.body.folderId;
+        if (folderIdVal) {
+            if (!mongoose.Types.ObjectId.isValid(folderIdVal)) return res.status(400).json({ success: false, error: "Invalid folderId" });
+            const folderDoc = await Folder.findById(folderIdVal);
+            if (!folderDoc) return res.status(400).json({ success: false, error: "Folder not found" });
+            if (folderDoc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Folder not owned by you" });
+        }
 
-                const fileHash = computeFileHash(file.buffer, ownerId);
-                const titleHash = computeTitleHmac(title);
+        // For multiple images: combine them into a single document
+        // For single PDF: process as multi-page document
+        // For single image: process as single-page document
+        let combinedBuffer;
+        let finalMimeType;
+        let finalOriginalName;
+        
+        if (files.length === 1) {
+            // Single file (PDF or image)
+            combinedBuffer = files[0].buffer;
+            finalMimeType = files[0].mimetype;
+            finalOriginalName = files[0].originalname;
+            
+            console.log('File details:', {
+                originalSize: files[0].size,
+                bufferSize: files[0].buffer.length,
+                mimetype: files[0].mimetype,
+                originalName: files[0].originalname
+            });
+        } else {
+            // Multiple images: treat as multi-page document
+            // All files must be images
+            const allImages = files.every(f => f.mimetype === 'image/png' || f.mimetype === 'image/jpeg');
+            if (!allImages) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: "Multiple file upload only supported for images. Mix of file types not allowed." 
+                });
+            }
+            
+            // Store first file as main binary (for backward compatibility)
+            // We'll generate pages from all files
+            combinedBuffer = files[0].buffer;
+            finalMimeType = 'image/jpeg'; // Mark as multi-image document
+            finalOriginalName = `${files.length} images`;
+            
+            console.log(`Processing ${files.length} images as multi-page document`);
+        }
+
+        const fileHash = computeFileHash(combinedBuffer, ownerId);
+        const titleHash = computeTitleHmac(title);
+
+        // Generate thumbnails and page metadata based on file type(s)
+        const pages = await generatePageThumbnails(files);
 
         const doc = new Document({
             userId: ownerId,
             title,
             titleHash,
             fileHash,
-            fileType: file.mimetype || fileType,
-            originalFileName: file.originalname || originalFileName,
-            fileBinaryData: file.buffer,
-            fileSize: file.size,
+            fileType: finalMimeType || fileType,
+            originalFileName: finalOriginalName || originalFileName,
+            fileBinaryData: combinedBuffer,
+            fileSize: files.reduce((sum, f) => sum + f.size, 0),
             extractedFields: extractedFields || {},
             tags: tags || [],
             folderId: folderIdVal || null,
+            pages: pages,
         });
         await doc.save();
+        
+        console.log(`Document created with ${pages.length} page(s) and thumbnails`);
         res.status(201).json({ success: true, id: doc._id });
     } catch (err) {
         if (err.code === 11000) {
@@ -160,6 +203,80 @@ export const downloadDocumentFile = async (req, res) => {
     }
 };
 
+// GET pages metadata for a document
+export const getDocumentPages = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const doc = await Document.findById(id).select('pages userId');
+        if (!doc) return res.status(404).json({ success: false, error: 'Document not found' });
+        
+        // Verify ownership
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+        if (doc.userId && doc.userId.toString() !== ownerId.toString()) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        // Return pages array with metadata (no binary data)
+        res.json({ 
+            success: true, 
+            data: {
+                pages: doc.pages || [],
+                totalPages: doc.pages ? doc.pages.length : 0
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
+
+// GET thumbnail for a specific page
+export const getPageThumbnail = async (req, res) => {
+    try {
+        const { id, pageNum } = req.params;
+        const pageNumber = parseInt(pageNum);
+        
+        if (isNaN(pageNumber) || pageNumber < 1) {
+            return res.status(400).json({ success: false, error: 'Invalid page number' });
+        }
+        
+        const doc = await Document.findById(id).select('pages userId');
+        if (!doc) return res.status(404).json({ success: false, error: 'Document not found' });
+        
+        // Verify ownership
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+        if (doc.userId && doc.userId.toString() !== ownerId.toString()) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        // Find the requested page
+        const page = doc.pages.find(p => p.pageNumber === pageNumber);
+        if (!page) {
+            return res.status(404).json({ success: false, error: 'Page not found' });
+        }
+        
+        if (!page.thumbnailGridFS) {
+            return res.status(404).json({ success: false, error: 'Thumbnail not available for this page' });
+        }
+
+        // Stream thumbnail from GridFS
+        const downloadStream = gridFSBucket.openDownloadStream(page.thumbnailGridFS);
+        
+        res.setHeader('Content-Type', 'image/jpeg');
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        
+        downloadStream.on('error', (err) => {
+            console.error('GridFS download error:', err);
+            res.status(404).json({ success: false, error: 'Thumbnail not found in storage' });
+        });
+        
+        downloadStream.pipe(res);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
+
 // UPDATE a document by ID
 export const updateDocument = async (req, res) => {
   try {
@@ -213,4 +330,170 @@ export const deleteDocument = async (req,res) => {
     } catch (err) {
         res.status(500).json({ success: false, error: err.message});
     }
+}
+
+/**
+ * Generate thumbnails for all pages of a document
+ * Handles: single PDF (multi-page), single image, multiple images
+ * @param {Array} files - Array of multer file objects
+ * @returns {Promise<Array>} Array of page metadata objects with thumbnailGridFS IDs
+ */
+async function generatePageThumbnails(files) {
+    const pages = [];
+    
+    try {
+        if (files.length === 1 && files[0].mimetype === 'application/pdf') {
+            // Handle multi-page PDF
+            const fileBuffer = files[0].buffer;
+            const pdfDoc = await PDFDocument.load(fileBuffer);
+            const pageCount = pdfDoc.getPageCount();
+            
+            console.log(`Processing ${pageCount}-page PDF...`);
+            
+            // Create temp directory for PDF conversion
+            const tempDir = path.join(os.tmpdir(), `pdf-${Date.now()}`);
+            fs.mkdirSync(tempDir, { recursive: true });
+            
+            try {
+                // Write PDF to temp file
+                const tempPdfPath = path.join(tempDir, 'input.pdf');
+                fs.writeFileSync(tempPdfPath, fileBuffer);
+                
+                // Convert PDF pages to PNG images using pdf-poppler
+                const opts = {
+                    format: 'png',
+                    out_dir: tempDir,
+                    out_prefix: 'page',
+                    page: null // Convert all pages
+                };
+                
+                await convert(tempPdfPath, opts);
+                
+                // Process each converted page image
+                for (let i = 0; i < pageCount; i++) {
+                    try {
+                        const pageImagePath = path.join(tempDir, `page-${i + 1}.png`);
+                        
+                        if (fs.existsSync(pageImagePath)) {
+                            const pageImageBuffer = fs.readFileSync(pageImagePath);
+                            
+                            // Generate thumbnail from the PNG
+                            const thumbnailBuffer = await sharp(pageImageBuffer)
+                                .resize(300, 400, {
+                                    fit: 'inside',
+                                    withoutEnlargement: true,
+                                })
+                                .jpeg({ quality: 85 })
+                                .toBuffer();
+                            
+                            // Store thumbnail in GridFS
+                            const thumbnailId = await storeThumbnailInGridFS(thumbnailBuffer, `page-${i + 1}.jpg`);
+                            
+                            pages.push({
+                                pageNumber: i + 1,
+                                thumbnailGridFS: thumbnailId,
+                                extractedFields: {},
+                                ocrText: '',
+                            });
+                            
+                            console.log(`Generated thumbnail for PDF page ${i + 1}/${pageCount}`);
+                        } else {
+                            console.error(`Page image not found: ${pageImagePath}`);
+                            pages.push({
+                                pageNumber: i + 1,
+                                thumbnailGridFS: null,
+                                extractedFields: {},
+                                ocrText: '',
+                            });
+                        }
+                    } catch (pageErr) {
+                        console.error(`Failed to generate thumbnail for page ${i + 1}:`, pageErr.message);
+                        pages.push({
+                            pageNumber: i + 1,
+                            thumbnailGridFS: null,
+                            extractedFields: {},
+                            ocrText: '',
+                        });
+                    }
+                }
+            } finally {
+                // Clean up temp directory
+                try {
+                    fs.rmSync(tempDir, { recursive: true, force: true });
+                } catch (cleanupErr) {
+                    console.error('Failed to cleanup temp directory:', cleanupErr.message);
+                }
+            }
+        } else if (files.every(f => f.mimetype === 'image/png' || f.mimetype === 'image/jpeg')) {
+            // Handle single or multiple images
+            console.log(`Processing ${files.length} image(s)...`);
+            
+            for (let i = 0; i < files.length; i++) {
+                try {
+                    const fileBuffer = files[i].buffer;
+                    
+                    // Generate thumbnail from image
+                    const thumbnailBuffer = await sharp(fileBuffer)
+                        .resize(300, 400, {
+                            fit: 'inside',
+                            withoutEnlargement: true,
+                        })
+                        .jpeg({ quality: 85 })
+                        .toBuffer();
+                    
+                    // Store thumbnail in GridFS
+                    const thumbnailId = await storeThumbnailInGridFS(thumbnailBuffer, `page-${i + 1}.jpg`);
+                    
+                    pages.push({
+                        pageNumber: i + 1,
+                        thumbnailGridFS: thumbnailId,
+                        extractedFields: {},
+                        ocrText: '',
+                    });
+                    
+                    console.log(`Generated thumbnail for image ${i + 1}/${files.length}`);
+                } catch (imgErr) {
+                    console.error(`Failed to generate thumbnail for image ${i + 1}:`, imgErr.message);
+                    pages.push({
+                        pageNumber: i + 1,
+                        thumbnailGridFS: null,
+                        extractedFields: {},
+                        ocrText: '',
+                    });
+                }
+            }
+        } else {
+            console.warn(`Unsupported file type(s) for thumbnails`);
+        }
+    } catch (err) {
+        console.error('Error generating page thumbnails:', err);
+        // Return empty array if thumbnail generation fails completely
+    }
+    
+    return pages;
+}
+
+/**
+ * Store a thumbnail in GridFS
+ * @param {Buffer} thumbnailBuffer - Thumbnail image data (JPEG)
+ * @param {string} filename - Filename for the thumbnail
+ * @returns {Promise<ObjectId>} GridFS file ID
+ */
+async function storeThumbnailInGridFS(thumbnailBuffer, filename) {
+    return new Promise((resolve, reject) => {
+        const uploadStream = gridFSBucket.openUploadStream(filename, {
+            contentType: 'image/jpeg',
+            metadata: { type: 'thumbnail' }
+        });
+        
+        uploadStream.on('finish', () => {
+            resolve(uploadStream.id);
+        });
+        
+        uploadStream.on('error', (err) => {
+            reject(err);
+        });
+        
+        uploadStream.end(thumbnailBuffer);
+    });
 }
