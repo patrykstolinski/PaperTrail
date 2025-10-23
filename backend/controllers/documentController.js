@@ -332,6 +332,318 @@ export const deleteDocument = async (req,res) => {
     }
 }
 
+// ========== REMINDER ENDPOINTS ==========
+
+/**
+ * Add a new reminder to a document
+ * POST /api/documents/:id/reminders
+ * Body: { date: "2026-01-01T09:00:00.000Z", message: "Renewal due" }
+ */
+export const addReminder = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { date, message } = req.body;
+
+        // Validate required fields
+        if (!date || !message) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Both 'date' and 'message' are required" 
+            });
+        }
+
+        // Validate date is in the future
+        const reminderDate = new Date(date);
+        if (isNaN(reminderDate.getTime())) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Invalid date format" 
+            });
+        }
+        if (reminderDate < new Date()) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Reminder date cannot be in the past" 
+            });
+        }
+
+        // Find document and verify ownership
+        const doc = await Document.findById(id);
+        if (!doc) {
+            return res.status(404).json({ 
+                success: false, 
+                error: "Document not found" 
+            });
+        }
+
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) {
+            return res.status(401).json({ 
+                success: false, 
+                error: "Missing authenticated user" 
+            });
+        }
+        if (doc.userId.toString() !== ownerId.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                error: "Forbidden" 
+            });
+        }
+
+        // Add reminder to array
+        doc.reminders.push({
+            date: reminderDate,
+            message: message.trim(),
+            sent: false
+        });
+
+        // Save document (this triggers Mongoose validation)
+        await doc.save();
+
+        res.status(201).json({ 
+            success: true, 
+            data: {
+                reminders: doc.reminders,
+                totalReminders: doc.reminders.length
+            }
+        });
+    } catch (err) {
+        // Handle Mongoose validation errors
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message 
+            });
+        }
+        res.status(500).json({ 
+            success: false, 
+            error: err.message 
+        });
+    }
+};
+
+/**
+ * Get all reminders for a document
+ * GET /api/documents/:id/reminders
+ */
+export const getReminders = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Find document and verify ownership
+        const doc = await Document.findById(id);
+        if (!doc) {
+            return res.status(404).json({ 
+                success: false, 
+                error: "Document not found" 
+            });
+        }
+
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) {
+            return res.status(401).json({ 
+                success: false, 
+                error: "Missing authenticated user" 
+            });
+        }
+        if (doc.userId.toString() !== ownerId.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                error: "Forbidden" 
+            });
+        }
+
+        res.json({ 
+            success: true, 
+            data: {
+                reminders: doc.reminders,
+                totalReminders: doc.reminders.length
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false, 
+            error: err.message 
+        });
+    }
+};
+
+/**
+ * Delete a reminder from a document by array index
+ * DELETE /api/documents/:id/reminders/:index
+ */
+export const deleteReminder = async (req, res) => {
+    try {
+        const { id, index } = req.params;
+        const reminderIndex = parseInt(index, 10);
+
+        // Validate index is a number
+        if (isNaN(reminderIndex) || reminderIndex < 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Invalid reminder index" 
+            });
+        }
+
+        // Find document and verify ownership
+        const doc = await Document.findById(id);
+        if (!doc) {
+            return res.status(404).json({ 
+                success: false, 
+                error: "Document not found" 
+            });
+        }
+
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) {
+            return res.status(401).json({ 
+                success: false, 
+                error: "Missing authenticated user" 
+            });
+        }
+        if (doc.userId.toString() !== ownerId.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                error: "Forbidden" 
+            });
+        }
+
+        // Check if index exists
+        if (reminderIndex >= doc.reminders.length) {
+            return res.status(404).json({ 
+                success: false, 
+                error: "Reminder not found at index " + reminderIndex 
+            });
+        }
+
+        // Remove reminder from array
+        doc.reminders.splice(reminderIndex, 1);
+        await doc.save();
+
+        res.json({ 
+            success: true, 
+            data: {
+                message: "Reminder deleted successfully",
+                reminders: doc.reminders,
+                totalReminders: doc.reminders.length
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ 
+            success: false, 
+            error: err.message 
+        });
+    }
+};
+
+/**
+ * Update a reminder by array index
+ * PUT /api/documents/:id/reminders/:index
+ * Body: { date?: "2026-01-01T09:00:00.000Z", message?: "Updated message", sent?: true }
+ */
+export const updateReminder = async (req, res) => {
+    try {
+        const { id, index } = req.params;
+        const { date, message, sent } = req.body;
+        const reminderIndex = parseInt(index, 10);
+
+        // Validate index is a number
+        if (isNaN(reminderIndex) || reminderIndex < 0) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Invalid reminder index" 
+            });
+        }
+
+        // Find document and verify ownership
+        const doc = await Document.findById(id);
+        if (!doc) {
+            return res.status(404).json({ 
+                success: false, 
+                error: "Document not found" 
+            });
+        }
+
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) {
+            return res.status(401).json({ 
+                success: false, 
+                error: "Missing authenticated user" 
+            });
+        }
+        if (doc.userId.toString() !== ownerId.toString()) {
+            return res.status(403).json({ 
+                success: false, 
+                error: "Forbidden" 
+            });
+        }
+
+        // Check if index exists
+        if (reminderIndex >= doc.reminders.length) {
+            return res.status(404).json({ 
+                success: false, 
+                error: "Reminder not found at index " + reminderIndex 
+            });
+        }
+
+        // Update fields if provided
+        if (date !== undefined) {
+            const reminderDate = new Date(date);
+            if (isNaN(reminderDate.getTime())) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: "Invalid date format" 
+                });
+            }
+            if (reminderDate < new Date()) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: "Reminder date cannot be in the past" 
+                });
+            }
+            doc.reminders[reminderIndex].date = reminderDate;
+        }
+
+        if (message !== undefined) {
+            if (!message || message.trim().length === 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    error: "Message cannot be empty" 
+                });
+            }
+            doc.reminders[reminderIndex].message = message.trim();
+        }
+
+        if (sent !== undefined) {
+            doc.reminders[reminderIndex].sent = Boolean(sent);
+        }
+
+        // Save document (triggers validation)
+        await doc.save();
+
+        res.json({ 
+            success: true, 
+            data: {
+                reminder: doc.reminders[reminderIndex],
+                reminders: doc.reminders,
+                totalReminders: doc.reminders.length
+            }
+        });
+    } catch (err) {
+        // Handle Mongoose validation errors
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ 
+                success: false, 
+                error: err.message 
+            });
+        }
+        res.status(500).json({ 
+            success: false, 
+            error: err.message 
+        });
+    }
+};
+
 /**
  * Generate thumbnails for all pages of a document
  * Handles: single PDF (multi-page), single image, multiple images

@@ -9,7 +9,11 @@ import {
     deleteDocument, 
     downloadDocumentFile,
     getDocumentPages,
-    getPageThumbnail
+    getPageThumbnail,
+    addReminder,
+    getReminders,
+    deleteReminder,
+    updateReminder
 } from "../controllers/documentController.js";
 
 
@@ -45,6 +49,21 @@ router.get("/:id/pages", auth, validateObjectId, getDocumentPages);
 
 //GET /api/documents/:id/pages/:pageNum/thumbnail
 router.get("/:id/pages/:pageNum/thumbnail", auth, validateObjectId, getPageThumbnail);
+
+// ========== REMINDER ROUTES ==========
+// NOTE: These must come BEFORE the generic /:id routes to avoid route conflicts
+
+//POST /api/documents/:id/reminders - Add a new reminder
+router.post("/:id/reminders", auth, validateObjectId, addReminder);
+
+//GET /api/documents/:id/reminders - Get all reminders for a document
+router.get("/:id/reminders", auth, validateObjectId, getReminders);
+
+//PUT /api/documents/:id/reminders/:index - Update a reminder by index
+router.put("/:id/reminders/:index", auth, validateObjectId, updateReminder);
+
+//DELETE /api/documents/:id/reminders/:index - Delete a reminder by index
+router.delete("/:id/reminders/:index", auth, validateObjectId, deleteReminder);
 
 //PUT /api/documents/:id
 router.put("/:id", auth, validateObjectId, updateDocument);
