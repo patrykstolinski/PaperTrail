@@ -113,7 +113,18 @@ const DocumentSchema = new Schema(
             required: true,
             validate: {
               validator: function(value) {
-                return value >= new Date();
+                // Allow reminders scheduled for today or any future date.
+                // Compare only the date portion (ignore time-of-day) so that
+                // setting a reminder for the same calendar day is allowed.
+                try {
+                  const now = new Date();
+                  now.setHours(0,0,0,0);
+                  const v = new Date(value);
+                  v.setHours(0,0,0,0);
+                  return v >= now;
+                } catch (e) {
+                  return false;
+                }
               },
               message: "Reminder date cannot be in the past, bruh"
             },
