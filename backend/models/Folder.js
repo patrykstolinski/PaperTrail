@@ -93,15 +93,19 @@ function makeSlug(input) {
     .slice(0, 100);
 }
 
-// Pre-save hook: generate slug from name when missing, and prevent self-parenting
+// Pre-validate hook: generate/update slug from name when name changes (unless slug explicitly set),
+// maintain normalized nameLower for case-insensitive uniqueness, and prevent self-parenting.
 FolderSchema.pre("validate", function (next) {
-  if (!this.slug && this.name) {
-    this.slug = makeSlug(this.name);
-  }
-
   // Maintain normalized name for case-insensitive uniqueness
   if (this.name) {
     this.nameLower = String(this.name).toLowerCase().trim();
+  }
+
+  // Generate or update slug:
+  // - If the name was modified and the slug was NOT explicitly modified, regenerate slug from name.
+  // - If no slug exists (create-time), generate from name.
+  if ((this.isModified && this.isModified('name') && !this.isModified('slug')) || (!this.slug && this.name)) {
+    this.slug = makeSlug(this.name);
   }
 
   // Prevent a folder from being its own parent
