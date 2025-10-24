@@ -352,7 +352,7 @@ export const addReminder = async (req, res) => {
             });
         }
 
-        // Validate date is in the future
+        // Validate date is valid and not in the past (compare calendar date only)
         const reminderDate = new Date(date);
         if (isNaN(reminderDate.getTime())) {
             return res.status(400).json({ 
@@ -360,7 +360,12 @@ export const addReminder = async (req, res) => {
                 error: "Invalid date format" 
             });
         }
-        if (reminderDate < new Date()) {
+        // Compare by calendar date (server local): strip time portion
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const checkDate = new Date(reminderDate);
+        checkDate.setHours(0,0,0,0);
+        if (checkDate < today) {
             return res.status(400).json({ 
                 success: false, 
                 error: "Reminder date cannot be in the past" 
@@ -595,7 +600,12 @@ export const updateReminder = async (req, res) => {
                     error: "Invalid date format" 
                 });
             }
-            if (reminderDate < new Date()) {
+            // Compare calendar dates only
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const checkDate = new Date(reminderDate);
+            checkDate.setHours(0,0,0,0);
+            if (checkDate < today) {
                 return res.status(400).json({ 
                     success: false, 
                     error: "Reminder date cannot be in the past" 
