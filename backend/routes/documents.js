@@ -13,7 +13,8 @@ import {
     addReminder,
     getReminders,
     deleteReminder,
-    updateReminder
+    updateReminder,
+    searchDocuments
 } from "../controllers/documentController.js";
 
 
@@ -37,6 +38,9 @@ router.post(
 
 //GET /api/documents
 router.get("/", auth, getAllDocuments);
+
+//GET /api/documents/search - Search documents by query, tags, and extracted fields
+router.get("/search", auth, searchDocuments);
 
 //GET /api/documents/:id
 router.get("/:id", auth, validateObjectId, getDocumentById);

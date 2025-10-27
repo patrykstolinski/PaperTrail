@@ -795,6 +795,87 @@ async function generatePageThumbnails(files) {
     return pages;
 }
 
+// SEARCH documents by query, tags, and extracted fields
+export const searchDocuments = async (req, res) => {
+    try {
+        const ownerId = req.user?.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
+
+        const { q, tags, folderId, page = 1, pageSize = 20 } = req.query;
+        
+        // Base filter: owner + optional folder restriction
+        const filter = { userId: ownerId };
+        if (folderId && mongoose.Types.ObjectId.isValid(folderId)) {
+            filter.folderId = folderId;
+        }
+
+        // Tag filtering (AND logic - documents must have ALL specified tags)
+        if (tags) {
+            const tagArray = tags.split(',').map(t => t.trim()).filter(Boolean);
+            if (tagArray.length > 0) {
+                filter.tags = { $all: tagArray };
+            }
+        }
+
+        // Text search or extracted fields search
+        if (q && q.trim()) {
+            const searchTerm = q.trim();
+            
+            // Use $or to search across multiple fields
+            filter.$or = [
+                // MongoDB text search (title, tags, originalFileName - already indexed)
+                { $text: { $search: searchTerm } },
+                
+                // Regex search for extractedFields (search both keys and values)
+                // This handles the dynamic schema where field names are unknown at schema definition
+                {
+                    $expr: {
+                        $gt: [
+                            {
+                                $size: {
+                                    $filter: {
+                                        input: { $objectToArray: "$extractedFields" },
+                                        as: "field",
+                                        cond: {
+                                            $or: [
+                                                { $regexMatch: { input: "$$field.k", regex: searchTerm, options: "i" } },
+                                                { $regexMatch: { input: { $toString: "$$field.v" }, regex: searchTerm, options: "i" } }
+                                            ]
+                                        }
+                                    }
+                                }
+                            },
+                            0
+                        ]
+                    }
+                }
+            ];
+        }
+
+        const totalCount = await Document.countDocuments(filter);
+        const documents = await Document.find(filter)
+            .select('-fileBinaryData') // Exclude binary data from results for performance
+            .sort({ createdAt: -1 })
+            .skip((parseInt(page) - 1) * parseInt(pageSize))
+            .limit(parseInt(pageSize))
+            .lean();
+
+        res.json({
+            success: true,
+            data: documents,
+            meta: {
+                totalCount,
+                page: parseInt(page),
+                pageSize: parseInt(pageSize),
+                totalPages: Math.ceil(totalCount / parseInt(pageSize))
+            }
+        });
+    } catch (err) {
+        console.error("Error searching documents:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
+
 /**
  * Store a thumbnail in GridFS
  * @param {Buffer} thumbnailBuffer - Thumbnail image data (JPEG)

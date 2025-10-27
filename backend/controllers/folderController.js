@@ -306,3 +306,79 @@ export const deleteFolder = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+// SEARCH folders by query (name, description, slug)
+export const searchFolders = async (req, res) => {
+  try {
+    const ownerId = req.user?.id;
+    if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
+
+    const { q, parentId, page = 1, pageSize = 20 } = req.query;
+    
+    // Base filter: owner + optional parent restriction
+    const filter = { userId: ownerId };
+    if (parentId && mongoose.Types.ObjectId.isValid(parentId)) {
+      filter.parentId = parentId;
+    }
+
+    // Text search across name, description
+    if (q && q.trim()) {
+      const searchTerm = q.trim();
+      
+      // MongoDB text search (name, description - already indexed)
+      // Also include slug search via regex for exact slug matching
+      filter.$or = [
+        { $text: { $search: searchTerm } },
+        { slug: { $regex: searchTerm, $options: 'i' } }
+      ];
+    }
+
+    // Get total count for pagination
+    const totalCount = await Folder.countDocuments(filter);
+
+    // Fetch folders with document counts (similar to minimal mode in listFolders)
+    const folders = await Folder.aggregate([
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'documents',
+          localField: '_id',
+          foreignField: 'folderId',
+          as: 'docs'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          name: 1,
+          slug: 1,
+          description: 1,
+          color: 1,
+          parentId: 1,
+          archived: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          documentCount: { $size: '$docs' }
+        }
+      },
+      { $sort: { createdAt: -1 } },
+      { $skip: (parseInt(page) - 1) * parseInt(pageSize) },
+      { $limit: parseInt(pageSize) }
+    ]);
+
+    res.json({
+      success: true,
+      data: folders,
+      meta: {
+        totalCount,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+        totalPages: Math.ceil(totalCount / parseInt(pageSize))
+      }
+    });
+  } catch (err) {
+    console.error("Error searching folders:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};

@@ -1,7 +1,7 @@
 import express from "express";
 import auth from "../middleware/auth.js";
 import { validateObjectId } from "../middleware/validateObjectId.js";
-import { createFolder, listFolders, getFolderById, getFolderBySlug, getDocumentsInFolder, bulkMoveDocuments, updateFolder, deleteFolder, } from "../controllers/folderController.js";
+import { createFolder, listFolders, getFolderById, getFolderBySlug, getDocumentsInFolder, bulkMoveDocuments, updateFolder, deleteFolder, searchFolders } from "../controllers/folderController.js";
 import { getDocumentsInFolderBySlug } from "../controllers/folderController.js";
 
 const router = express.Router();
@@ -26,6 +26,9 @@ router.post("/", createFolder);
 
 // List (optional query parentId)
 router.get("/", listFolders);
+
+// Search folders by query (name, description, slug)
+router.get("/search", searchFolders);
 
 // Read, Update, Delete by ID
 router.get("/:id", validateObjectId, getFolderById);

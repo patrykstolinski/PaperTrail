@@ -10,6 +10,7 @@ import { GridFSBucket } from "mongodb";
 //------------------ import routes
 import documentRoutes from "./backend/routes/documents.js";
 import folderRoutes from "./backend/routes/folders.js";
+import searchRoutes from "./backend/routes/search.js";
 
 //------------------ initialise Express App
 const app = express();
@@ -84,6 +85,7 @@ app.get("/health", (req, res) => {
 
 //------------------ Main routes
 
+app.use("/api/search", searchRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/folders", folderRoutes);
 
@@ -102,7 +104,9 @@ app.listen(serverPort, () => {
   console.log("--------------------------------------------------");
   console.log(`Server running on port ${serverPort}`);
   console.log(`Healthcheck:   http://localhost:${serverPort}/health`);
+  console.log(`Search API:    http://localhost:${serverPort}/api/search`);
   console.log(`Documents API: http://localhost:${serverPort}/api/documents`);
+  console.log(`Folders API:   http://localhost:${serverPort}/api/folders`);
   console.log(`Mongo Express: http://localhost:8081/`);
   console.log("--------------------------------------------------");
 });
