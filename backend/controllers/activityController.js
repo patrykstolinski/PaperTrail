@@ -15,7 +15,7 @@ export async function logActivity(userId, resourceType, resourceId, actionType, 
     });
 
     await activity.save();
-    console.log(`📝 Activity logged: ${actionType} ${resourceType} "${resourceName}"`);
+    console.log(`Activity logged: ${actionType} ${resourceType} "${resourceName}"`);
     return activity;
   } catch (error) {
     console.error('Failed to log activity:', error);
