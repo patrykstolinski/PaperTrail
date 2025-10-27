@@ -876,6 +876,44 @@ export const searchDocuments = async (req, res) => {
     }
 };
 
+// GET tag statistics (top tags with counts)
+export const getTagStats = async (req, res) => {
+    try {
+        const ownerId = req.user?.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
+
+        // Convert to ObjectId
+        const ownerObjectId = mongoose.Types.ObjectId.isValid(ownerId) 
+            ? new mongoose.Types.ObjectId(ownerId) 
+            : ownerId;
+
+        const { limit = 10 } = req.query;
+
+        // Aggregate to get tag counts
+        const stats = await Document.aggregate([
+            // Filter by user
+            { $match: { userId: ownerObjectId } },
+            // Unwind tags array (creates one doc per tag)
+            { $unwind: "$tags" },
+            // Filter out empty/null tags
+            { $match: { tags: { $ne: null, $ne: "" } } },
+            // Group by tag and count occurrences
+            { $group: { _id: "$tags", count: { $sum: 1 } } },
+            // Sort by count descending
+            { $sort: { count: -1 } },
+            // Limit to top N tags
+            { $limit: parseInt(limit) },
+            // Format output
+            { $project: { _id: 0, tag: "$_id", count: 1 } }
+        ]);
+
+        res.json({ success: true, data: stats });
+    } catch (err) {
+        console.error("Error getting tag stats:", err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
+
 /**
  * Store a thumbnail in GridFS
  * @param {Buffer} thumbnailBuffer - Thumbnail image data (JPEG)

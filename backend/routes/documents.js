@@ -14,7 +14,8 @@ import {
     getReminders,
     deleteReminder,
     updateReminder,
-    searchDocuments
+    searchDocuments,
+    getTagStats
 } from "../controllers/documentController.js";
 
 
@@ -41,6 +42,9 @@ router.get("/", auth, getAllDocuments);
 
 //GET /api/documents/search - Search documents by query, tags, and extracted fields
 router.get("/search", auth, searchDocuments);
+
+//GET /api/documents/tags/stats - Get tag statistics (top tags with counts)
+router.get("/tags/stats", auth, getTagStats);
 
 //GET /api/documents/:id
 router.get("/:id", auth, validateObjectId, getDocumentById);
