@@ -1,6 +1,7 @@
 import Folder from "../models/Folder.js";
 import Document from "../models/Document.js";
 import mongoose from "mongoose";
+import { logActivity } from "./activityController.js";
 
 // CREATE a new folder
 export const createFolder = async (req, res) => {
@@ -35,6 +36,13 @@ export const createFolder = async (req, res) => {
     });
 
     await folder.save();
+    
+    // Log activity
+    await logActivity(ownerId, 'folder', folder._id, 'created', folder.name, {
+      slug: folder.slug,
+      parentId: folder.parentId,
+    });
+    
     res.status(201).json({ success: true, data: folder });
   } catch (err) {
     if (err.code === 11000) {
@@ -255,6 +263,12 @@ export const updateFolder = async (req, res) => {
 
     Object.assign(folder, allowed);
     await folder.save();
+    
+    // Log activity
+    await logActivity(ownerId, 'folder', folder._id, 'updated', folder.name, {
+      updatedFields: Object.keys(allowed),
+    });
+    
     res.json({ success: true, data: folder });
   } catch (err) {
     if (err.code === 11000) {
@@ -273,6 +287,11 @@ export const deleteFolder = async (req, res) => {
     const ownerId = req.user && req.user.id;
     if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
     if (folder.userId && folder.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
+    
+    // Store folder info before deletion for activity log
+    const folderName = folder.name;
+    const folderSlug = folder.slug;
+    
     // Default policy: refuse to delete if folder has children; also check for documents
     const childCount = await Folder.countDocuments({ parentId: folder._id });
     const docCount = await Document.countDocuments({ folderId: folder._id });
@@ -296,11 +315,26 @@ export const deleteFolder = async (req, res) => {
         await Document.deleteMany({ folderId: current });
         await Folder.deleteMany({ _id: current });
       }
+      
+      // Log activity for forced delete
+      await logActivity(ownerId, 'folder', id, 'deleted', folderName, {
+        slug: folderSlug,
+        forcedDelete: true,
+        childCount,
+        docCount,
+      });
+      
       return res.json({ success: true, data: `Folder ${id} and its contents deleted.` });
     }
 
     // If not force and no children/docs, safe to delete
     await folder.deleteOne();
+    
+    // Log activity
+    await logActivity(ownerId, 'folder', id, 'deleted', folderName, {
+      slug: folderSlug,
+    });
+    
     res.json({ success: true, data: `Folder ${id} deleted successfully.` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -9,6 +9,7 @@ import { convert } from "pdf-poppler";
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { logActivity } from "./activityController.js";
 
 // CREATE a new Document 
 
@@ -105,6 +106,13 @@ export const createDocument = async (req, res) => {
             pages: pages,
         });
         await doc.save();
+        
+        // Log activity
+        await logActivity(ownerId, 'document', doc._id, 'created', title, {
+            fileType: finalMimeType,
+            pageCount: pages.length,
+            tags: tags || [],
+        });
         
         console.log(`Document created with ${pages.length} page(s) and thumbnails`);
         res.status(201).json({ success: true, id: doc._id });
@@ -304,6 +312,12 @@ export const updateDocument = async (req, res) => {
 
                 Object.assign(doc, allowed);
         await doc.save();
+        
+        // Log activity
+        await logActivity(ownerId, 'document', doc._id, 'updated', doc.title, {
+            updatedFields: Object.keys(allowed),
+        });
+        
                         // avoid returning binary data in update response
                         const out = doc.toObject ? doc.toObject() : doc;
                         if (out.fileBinaryData) delete out.fileBinaryData;
@@ -325,7 +339,17 @@ export const deleteDocument = async (req,res) => {
         if (!ownerId) return res.status(401).json({ success: false, error: "Missing authenticated user" });
         if (doc.userId && doc.userId.toString() !== ownerId.toString()) return res.status(403).json({ success: false, error: "Forbidden" });
 
+        // Store document info before deletion for activity log
+        const docTitle = doc.title;
+        const docTags = doc.tags || [];
+        
         await doc.deleteOne();
+        
+        // Log activity AFTER deletion
+        await logActivity(ownerId, 'document', id, 'deleted', docTitle, {
+            tags: docTags,
+        });
+        
         res.json({ success: true, data: `Document ${id} deleted successfully.` });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message});

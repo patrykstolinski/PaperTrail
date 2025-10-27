@@ -11,6 +11,7 @@ import { GridFSBucket } from "mongodb";
 import documentRoutes from "./backend/routes/documents.js";
 import folderRoutes from "./backend/routes/folders.js";
 import searchRoutes from "./backend/routes/search.js";
+import activityRoutes from "./backend/routes/activities.js";
 
 //------------------ initialise Express App
 const app = express();
@@ -88,6 +89,7 @@ app.get("/health", (req, res) => {
 app.use("/api/search", searchRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/folders", folderRoutes);
+app.use("/api/activities", activityRoutes);
 
 // Handle upload errors (Multer) - register after routes so it can catch errors
 app.use(handleUploadErrors);
@@ -107,6 +109,7 @@ app.listen(serverPort, () => {
   console.log(`Search API:    http://localhost:${serverPort}/api/search`);
   console.log(`Documents API: http://localhost:${serverPort}/api/documents`);
   console.log(`Folders API:   http://localhost:${serverPort}/api/folders`);
+  console.log(`Activities API: http://localhost:${serverPort}/api/activities`);
   console.log(`Mongo Express: http://localhost:8081/`);
   console.log("--------------------------------------------------");
 });
