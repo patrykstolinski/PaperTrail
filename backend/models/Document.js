@@ -31,7 +31,11 @@ const PageMetadataSchema = new Schema(
         },
         thumbnailGridFS: {
             type: Schema.Types.ObjectId,
-            // Reference to GridFS file in 'thumbnails' bucket
+            // Reference to GridFS file in 'thumbnails' bucket (300x400px JPEG)
+        },
+        fullImageGridFS: {
+            type: Schema.Types.ObjectId,
+            // Reference to GridFS file for full-size page image (multi-image documents)
         },
         extractedFields: {
             type: ExtractedFieldsSchema,

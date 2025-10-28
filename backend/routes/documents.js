@@ -10,6 +10,7 @@ import {
     downloadDocumentFile,
     getDocumentPages,
     getPageThumbnail,
+    getPageFullImage,
     addReminder,
     getReminders,
     deleteReminder,
@@ -57,6 +58,9 @@ router.get("/:id/pages", auth, validateObjectId, getDocumentPages);
 
 //GET /api/documents/:id/pages/:pageNum/thumbnail
 router.get("/:id/pages/:pageNum/thumbnail", auth, validateObjectId, getPageThumbnail);
+
+//GET /api/documents/:id/pages/:pageNum/image - Get full-size page image
+router.get("/:id/pages/:pageNum/image", auth, validateObjectId, getPageFullImage);
 
 // ========== REMINDER ROUTES ==========
 // NOTE: These must come BEFORE the generic /:id routes to avoid route conflicts

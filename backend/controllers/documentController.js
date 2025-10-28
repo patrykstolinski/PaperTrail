@@ -285,6 +285,55 @@ export const getPageThumbnail = async (req, res) => {
     }
 };
 
+// GET full-size page image from GridFS
+export const getPageFullImage = async (req, res) => {
+    try {
+        const { id, pageNum } = req.params;
+        const pageNumber = parseInt(pageNum);
+        
+        if (isNaN(pageNumber) || pageNumber < 1) {
+            return res.status(400).json({ success: false, error: 'Invalid page number' });
+        }
+        
+        const doc = await Document.findById(id).select('pages userId fileType');
+        if (!doc) return res.status(404).json({ success: false, error: 'Document not found' });
+        
+        // Verify ownership
+        const ownerId = req.user && req.user.id;
+        if (!ownerId) return res.status(401).json({ success: false, error: 'Missing authenticated user' });
+        if (doc.userId && doc.userId.toString() !== ownerId.toString()) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        // Find the requested page
+        const page = doc.pages.find(p => p.pageNumber === pageNumber);
+        if (!page) {
+            return res.status(404).json({ success: false, error: 'Page not found' });
+        }
+        
+        if (!page.fullImageGridFS) {
+            return res.status(404).json({ success: false, error: 'Full image not available for this page' });
+        }
+
+        // Stream full-size image from GridFS
+        const downloadStream = gridFSBucket.openDownloadStream(page.fullImageGridFS);
+        
+        // Set appropriate content type (default to JPEG if not specified)
+        const contentType = doc.fileType || 'image/jpeg';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+        
+        downloadStream.on('error', (err) => {
+            console.error('GridFS download error:', err);
+            res.status(404).json({ success: false, error: 'Full image not found in storage' });
+        });
+        
+        downloadStream.pipe(res);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+};
+
 // UPDATE a document by ID
 export const updateDocument = async (req, res) => {
   try {
@@ -778,6 +827,9 @@ async function generatePageThumbnails(files) {
                 try {
                     const fileBuffer = files[i].buffer;
                     
+                    // Store FULL-SIZE image in GridFS for multi-image documents
+                    const fullImageId = await storeFullImageInGridFS(fileBuffer, `full-page-${i + 1}.jpg`, files[i].mimetype);
+                    
                     // Generate thumbnail from image
                     const thumbnailBuffer = await sharp(fileBuffer)
                         .resize(300, 400, {
@@ -793,16 +845,18 @@ async function generatePageThumbnails(files) {
                     pages.push({
                         pageNumber: i + 1,
                         thumbnailGridFS: thumbnailId,
+                        fullImageGridFS: fullImageId, // NEW: Store full-size image reference
                         extractedFields: {},
                         ocrText: '',
                     });
                     
-                    console.log(`Generated thumbnail for image ${i + 1}/${files.length}`);
+                    console.log(`Generated thumbnail and stored full image for ${i + 1}/${files.length}`);
                 } catch (imgErr) {
-                    console.error(`Failed to generate thumbnail for image ${i + 1}:`, imgErr.message);
+                    console.error(`Failed to process image ${i + 1}:`, imgErr.message);
                     pages.push({
                         pageNumber: i + 1,
                         thumbnailGridFS: null,
+                        fullImageGridFS: null,
                         extractedFields: {},
                         ocrText: '',
                     });
@@ -937,6 +991,32 @@ export const getTagStats = async (req, res) => {
         res.status(500).json({ success: false, error: err.message });
     }
 };
+
+/**
+ * Store a full-size image in GridFS
+ * @param {Buffer} imageBuffer - Full-size image data
+ * @param {string} filename - Filename for the image
+ * @param {string} mimetype - MIME type of the image
+ * @returns {Promise<ObjectId>} GridFS file ID
+ */
+async function storeFullImageInGridFS(imageBuffer, filename, mimetype) {
+    return new Promise((resolve, reject) => {
+        const uploadStream = gridFSBucket.openUploadStream(filename, {
+            contentType: mimetype || 'image/jpeg',
+            metadata: { type: 'full-image' }
+        });
+        
+        uploadStream.on('finish', () => {
+            resolve(uploadStream.id);
+        });
+        
+        uploadStream.on('error', (err) => {
+            reject(err);
+        });
+        
+        uploadStream.end(imageBuffer);
+    });
+}
 
 /**
  * Store a thumbnail in GridFS
