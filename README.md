@@ -1,6 +1,8 @@
 # PaperTrail
 A browser-first platform that lets people aggregate, organize, and manage all life paperwork and admin (insurance letters, credit contracts, warranties, etc.) in one place. It allows scanning or photo upload of documents, highlighter-based surgical OCR for field extraction.
 
+This README is very VERY out of date. Do not use this for any sort of navigation on the backend. It is insanely old.
+
 ## Inhaltsverzeichnis
 - [To start](#to-start)
 - [Testing Method](#testing-method)
